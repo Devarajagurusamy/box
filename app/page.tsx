@@ -10,6 +10,7 @@ import {
   List,
   FolderPlus
 } from 'lucide-react';
+import { useUser, useClerk } from '@clerk/nextjs';
 import {
   Prompt,
   Category,
@@ -54,6 +55,9 @@ import { ToastContainer } from './components/Toast';
 import { CategoryIcon } from './components/CategoryIcon';
 
 export default function Home() {
+  const { isSignedIn } = useUser();
+  const { openSignIn } = useClerk();
+
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [quickLinks, setQuickLinks] = useState<QuickToolLink[]>([]);
@@ -107,6 +111,18 @@ export default function Home() {
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  const requireAuth = useCallback(
+    (actionName: string = 'perform this action'): boolean => {
+      if (!isSignedIn) {
+        addToast('Sign In Required', `Please sign in to ${actionName}.`, 'info');
+        openSignIn();
+        return false;
+      }
+      return true;
+    },
+    [isSignedIn, openSignIn, addToast]
+  );
 
   useEffect(() => {
     async function initData() {
@@ -175,6 +191,7 @@ export default function Home() {
         }
       } else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
+        if (!requireAuth('create a prompt')) return;
         setPromptToEdit(null);
         setIsPromptModalOpen(true);
       }
@@ -188,9 +205,12 @@ export default function Home() {
     isCategoryModalOpen,
     isQuickLinkModalOpen,
     deleteModal.isOpen,
+    requireAuth,
   ]);
 
   const handleSavePrompt = async (savedPrompt: Prompt) => {
+    if (!requireAuth('save prompts')) return;
+
     let updatedPrompts: Prompt[];
     const exists = prompts.some((p) => p.id === savedPrompt.id);
 
@@ -215,6 +235,8 @@ export default function Home() {
   };
 
   const handleDeletePrompt = (prompt: Prompt) => {
+    if (!requireAuth('delete prompts')) return;
+
     setDeleteModal({
       isOpen: true,
       title: 'Delete Prompt',
@@ -238,6 +260,8 @@ export default function Home() {
   };
 
   const handleDuplicatePrompt = async (prompt: Prompt) => {
+    if (!requireAuth('duplicate prompts')) return;
+
     const duplicated: Prompt = {
       ...prompt,
       id: `prompt-${Date.now()}`,
@@ -259,6 +283,8 @@ export default function Home() {
   };
 
   const handleToggleFavorite = async (id: string) => {
+    if (!requireAuth('favorite prompts')) return;
+
     const updated = prompts.map((p) => {
       if (p.id === id) {
         const nextFav = !p.isFavorite;
@@ -305,6 +331,8 @@ export default function Home() {
   };
 
   const handleSaveCategory = async (savedCategory: Category) => {
+    if (!requireAuth('save categories')) return;
+
     let updatedCategories: Category[];
     const exists = categories.some((c) => c.id === savedCategory.id);
 
@@ -327,6 +355,8 @@ export default function Home() {
   };
 
   const handleDeleteCategory = (category: Category) => {
+    if (!requireAuth('delete categories')) return;
+
     const count = prompts.filter((p) => p.categoryId === category.id).length;
     const message =
       count > 0
@@ -371,6 +401,8 @@ export default function Home() {
   };
 
   const handleSaveQuickLink = async (savedLink: QuickToolLink) => {
+    if (!requireAuth('save links')) return;
+
     let updated: QuickToolLink[];
     const exists = quickLinks.some((l) => l.id === savedLink.id);
     if (exists) {
@@ -389,6 +421,8 @@ export default function Home() {
   };
 
   const handleDeleteQuickLink = async (id: string) => {
+    if (!requireAuth('delete links')) return;
+
     const updated = quickLinks.filter((l) => l.id !== id);
     setQuickLinks(updated);
     saveStoredQuickLinks(updated);
@@ -415,6 +449,8 @@ export default function Home() {
   };
 
   const handleImportFile = async (file: File) => {
+    if (!requireAuth('import data')) return;
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       const content = e.target?.result as string;
@@ -443,59 +479,54 @@ export default function Home() {
   };
 
   const handleClearVault = () => {
+    if (!requireAuth('clear vault')) return;
+
     setDeleteModal({
       isOpen: true,
       title: 'Clear Vault',
       message: 'Clear all prompts, categories, and links?',
       onConfirm: async () => {
         clearVaultData();
-        setCategories([]);
         setPrompts([]);
+        setCategories([]);
         setQuickLinks([]);
-        setSelectedCategory(null);
-        setOnlyFavorites(false);
 
         if (dbStatus?.connected) {
-          await apiClearDatabase();
+          apiClearDatabase();
         }
 
-        addToast('Vault Cleared', '', 'info');
+        addToast('Vault Cleared', 'All data removed.', 'info');
       },
     });
   };
 
   const promptCountByCategory = useMemo(() => {
-    const dict: Record<string, number> = {};
+    const counts: Record<string, number> = {};
     prompts.forEach((p) => {
-      dict[p.categoryId] = (dict[p.categoryId] || 0) + 1;
+      counts[p.categoryId] = (counts[p.categoryId] || 0) + 1;
     });
-    return dict;
+    return counts;
   }, [prompts]);
 
   const filteredPrompts = useMemo(() => {
     return prompts
-      .filter((p) => {
-        if (selectedCategory && p.categoryId !== selectedCategory) {
+      .filter((prompt) => {
+        if (selectedCategory && prompt.categoryId !== selectedCategory) {
           return false;
         }
-        if (onlyFavorites && !p.isFavorite) {
+        if (onlyFavorites && !prompt.isFavorite) {
           return false;
         }
         if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchTitle = p.title.toLowerCase().includes(q);
-          const matchDesc = p.description?.toLowerCase().includes(q);
-          const matchContent = p.content.toLowerCase().includes(q);
-          const matchTag = p.tags?.some((t) => t.toLowerCase().includes(q));
-          const matchLinks = p.links?.some(
-            (l) => l.title.toLowerCase().includes(q) || l.url.toLowerCase().includes(q)
-          );
-          const categoryName = categories.find((c) => c.id === p.categoryId)?.name.toLowerCase() || '';
-          const matchCategory = categoryName.includes(q);
-
-          if (!matchTitle && !matchDesc && !matchContent && !matchTag && !matchLinks && !matchCategory) {
-            return false;
-          }
+          const q = searchQuery.toLowerCase().trim();
+          const matchTitle = prompt.title.toLowerCase().includes(q);
+          const matchDesc = prompt.description?.toLowerCase().includes(q) || false;
+          const matchContent = prompt.content.toLowerCase().includes(q);
+          const matchTags = prompt.tags?.some((t) => t.toLowerCase().includes(q)) || false;
+          const matchCategory =
+            categories.find((c) => c.id === prompt.categoryId)?.name.toLowerCase().includes(q) ||
+            false;
+          return matchTitle || matchDesc || matchContent || matchTags || matchCategory;
         }
         return true;
       })
@@ -561,19 +592,23 @@ export default function Home() {
         onSelectCategory={(id) => setSelectedCategory(id)}
         onToggleOnlyFavorites={() => setOnlyFavorites(!onlyFavorites)}
         onOpenCreateCategory={() => {
+          if (!requireAuth('create a category')) return;
           setCategoryToEdit(null);
           setIsCategoryModalOpen(true);
         }}
         onOpenEditCategory={(cat) => {
+          if (!requireAuth('edit this category')) return;
           setCategoryToEdit(cat);
           setIsCategoryModalOpen(true);
         }}
         onDeleteCategory={handleDeleteCategory}
         onOpenAddQuickLink={() => {
+          if (!requireAuth('add a link')) return;
           setQuickLinkToEdit(null);
           setIsQuickLinkModalOpen(true);
         }}
         onOpenEditQuickLink={(link) => {
+          if (!requireAuth('edit this link')) return;
           setQuickLinkToEdit(link);
           setIsQuickLinkModalOpen(true);
         }}
@@ -591,6 +626,7 @@ export default function Home() {
           sortBy={sortBy}
           onChangeSortBy={setSortBy}
           onOpenCreatePrompt={() => {
+            if (!requireAuth('create a prompt')) return;
             setPromptToEdit(null);
             setIsPromptModalOpen(true);
           }}
@@ -720,6 +756,7 @@ export default function Home() {
                       setIsDetailModalOpen(true);
                     }}
                     onEdit={(p) => {
+                      if (!requireAuth('edit this prompt')) return;
                       setPromptToEdit(p);
                       setIsPromptModalOpen(true);
                     }}
@@ -750,6 +787,7 @@ export default function Home() {
                 {categories.length === 0 && (
                   <button
                     onClick={() => {
+                      if (!requireAuth('create a category')) return;
                       setCategoryToEdit(null);
                       setIsCategoryModalOpen(true);
                     }}
@@ -761,6 +799,7 @@ export default function Home() {
                 )}
                 <button
                   onClick={() => {
+                    if (!requireAuth('create a prompt')) return;
                     setPromptToEdit(null);
                     setIsPromptModalOpen(true);
                   }}
@@ -786,6 +825,7 @@ export default function Home() {
         }}
         onSave={handleSavePrompt}
         onOpenCreateCategory={() => {
+          if (!requireAuth('create a category')) return;
           setCategoryToEdit(null);
           setIsCategoryModalOpen(true);
         }}
@@ -801,6 +841,7 @@ export default function Home() {
         }}
         onCopy={handleCopyPrompt}
         onEdit={(p) => {
+          if (!requireAuth('edit this prompt')) return;
           setIsDetailModalOpen(false);
           setPromptToEdit(p);
           setIsPromptModalOpen(true);

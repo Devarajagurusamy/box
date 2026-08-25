@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { QuickLinkModel } from '@/lib/models/QuickLink';
 
@@ -19,6 +20,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+
     const mongoose = await connectToDatabase();
     if (!mongoose) {
       return NextResponse.json({ error: 'Database connection unavailable' }, { status: 503 });

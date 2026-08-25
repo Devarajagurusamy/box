@@ -7,6 +7,7 @@ import {
   Heart,
   X,
   LayoutGrid,
+  List,
   FolderPlus
 } from 'lucide-react';
 import {
@@ -514,8 +515,8 @@ export default function Home() {
     [prompts]
   );
   const totalLinks = useMemo(
-    () => prompts.reduce((acc, p) => acc + (p.links?.length || 0), 0),
-    [prompts]
+    () => quickLinks.length + prompts.reduce((acc, p) => acc + (p.links?.length || 0), 0),
+    [quickLinks, prompts]
   );
   const favoriteCount = useMemo(
     () => prompts.filter((p) => p.isFavorite).length,
@@ -608,19 +609,19 @@ export default function Home() {
             totalFavorites={favoriteCount}
           />
 
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-800/80">
-            <div className="flex items-center gap-2">
+          {/* Header & View Mode Controls */}
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-zinc-800/80">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
               {activeCategoryObj ? (
-                <div className={`p-1.5 rounded-md ${activeCategoryColor} text-white`}>
+                <div className={`p-1.5 rounded-md ${activeCategoryColor} text-white shrink-0`}>
                   <CategoryIcon name={activeCategoryObj.icon} className="w-3.5 h-3.5" />
                 </div>
               ) : onlyFavorites ? (
-                <div className="p-1.5 rounded-md bg-red-600 text-white">
+                <div className="p-1.5 rounded-md bg-red-600 text-white shrink-0">
                   <Heart className="w-3.5 h-3.5 fill-white" />
                 </div>
               ) : (
-                <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+                <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300 shrink-0">
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </div>
               )}
@@ -637,41 +638,63 @@ export default function Home() {
                   {filteredPrompts.length}
                 </span>
               </h1>
+
+              {/* Filter Indicators */}
+              {hasActiveFilters && (
+                <div className="flex flex-wrap items-center gap-1.5 ml-1">
+                  {selectedCategory && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
+                      <span>{activeCategoryObj?.name}</span>
+                      <button onClick={() => setSelectedCategory(null)} className="hover:text-white">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {onlyFavorites && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
+                      <span>Favorites</span>
+                      <button onClick={() => setOnlyFavorites(false)} className="hover:text-white">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {searchQuery && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
+                      <span>"{searchQuery}"</span>
+                      <button onClick={() => setSearchQuery('')} className="hover:text-white">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+
+                  <button onClick={clearAllFilters} className="text-xs text-zinc-400 hover:text-white underline ml-1">
+                    Clear
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Filter Indicators */}
-            {hasActiveFilters && (
-              <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-center">
-                {selectedCategory && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
-                    <span>{activeCategoryObj?.name}</span>
-                    <button onClick={() => setSelectedCategory(null)} className="hover:text-white">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
-                {onlyFavorites && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
-                    <span>Favorites</span>
-                    <button onClick={() => setOnlyFavorites(false)} className="hover:text-white">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
-                {searchQuery && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
-                    <span>"{searchQuery}"</span>
-                    <button onClick={() => setSearchQuery('')} className="hover:text-white">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
-
-                <button onClick={clearAllFilters} className="text-xs text-zinc-400 hover:text-white underline ml-1">
-                  Clear
-                </button>
-              </div>
-            )}
+            {/* View Mode Toggle (Grid / List) */}
+            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 shrink-0">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition ${
+                  viewMode === 'grid' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition ${
+                  viewMode === 'list' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+                title="List View"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Cards */}

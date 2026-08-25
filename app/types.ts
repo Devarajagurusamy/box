@@ -4,15 +4,6 @@ export interface PromptLink {
   url: string;
 }
 
-export type AIModelType = 
-  | 'ChatGPT'
-  | 'Claude'
-  | 'Gemini'
-  | 'DeepSeek'
-  | 'Midjourney'
-  | 'Cursor'
-  | 'General';
-
 export interface Prompt {
   id: string;
   title: string;
@@ -20,7 +11,7 @@ export interface Prompt {
   content: string;
   categoryId: string;
   tags: string[];
-  model: AIModelType;
+  model?: string;
   links: PromptLink[];
   isFavorite: boolean;
   copyCount: number;
@@ -31,8 +22,8 @@ export interface Prompt {
 export interface Category {
   id: string;
   name: string;
-  icon: string; // lucide icon identifier
-  color: string; // tailwind color token / hex / accent class
+  icon: string;
+  color: string;
   description: string;
 }
 
@@ -43,15 +34,6 @@ export interface QuickToolLink {
   iconName: string;
   category: string;
   description: string;
-}
-
-export interface FilterState {
-  searchQuery: string;
-  selectedCategory: string | null; // null = all
-  selectedModel: AIModelType | 'ALL';
-  onlyFavorites: boolean;
-  selectedTag: string | null;
-  sortBy: 'recent' | 'popular' | 'alpha';
 }
 
 export interface ToastMessage {

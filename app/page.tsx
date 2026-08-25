@@ -5,18 +5,14 @@ import {
   Plus,
   Search,
   Heart,
-  RotateCcw,
-  SlidersHorizontal,
   X,
   LayoutGrid,
-  FolderPlus,
-  Sparkles
+  FolderPlus
 } from 'lucide-react';
 import {
   Prompt,
   Category,
   QuickToolLink,
-  AIModelType,
   ToastMessage
 } from './types';
 import {
@@ -57,24 +53,19 @@ import { ToastContainer } from './components/Toast';
 import { CategoryIcon } from './components/CategoryIcon';
 
 export default function Home() {
-  // Loaded Data
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [quickLinks, setQuickLinks] = useState<QuickToolLink[]>([]);
   const [dbStatus, setDbStatus] = useState<DBStatus | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Filters & Views
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<AIModelType | 'ALL'>('ALL');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'alpha'>('recent');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Modal States
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [promptToEdit, setPromptToEdit] = useState<Prompt | null>(null);
 
@@ -99,7 +90,6 @@ export default function Home() {
     onConfirm: () => {},
   });
 
-  // Toasts
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const addToast = useCallback(
@@ -108,7 +98,7 @@ export default function Home() {
       setToasts((prev) => [...prev, { id, title, message, type }]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 3500);
+      }, 3000);
     },
     []
   );
@@ -117,10 +107,8 @@ export default function Home() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Initial Load (Fetches directly from MongoDB if connected, or clean local store)
   useEffect(() => {
     async function initData() {
-      // First load local cache
       const localCats = getStoredCategories();
       const localPrompts = getStoredPrompts();
       const localLinks = getStoredQuickLinks();
@@ -130,7 +118,6 @@ export default function Home() {
       setQuickLinks(localLinks);
       setIsLoaded(true);
 
-      // Check DB connectivity
       try {
         const status = await checkDBStatus();
         setDbStatus(status);
@@ -156,14 +143,13 @@ export default function Home() {
           }
         }
       } catch {
-        // Fallback to local storage
+        // Fallback
       }
     }
 
     initData();
   }, []);
 
-  // Keyboard Shortcuts ('/' for search, 'N' for new prompt)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -203,7 +189,6 @@ export default function Home() {
     deleteModal.isOpen,
   ]);
 
-  // Prompt CRUD
   const handleSavePrompt = async (savedPrompt: Prompt) => {
     let updatedPrompts: Prompt[];
     const exists = prompts.some((p) => p.id === savedPrompt.id);
@@ -232,7 +217,7 @@ export default function Home() {
     setDeleteModal({
       isOpen: true,
       title: 'Delete Prompt',
-      message: `Are you sure you want to delete "${prompt.title}"?`,
+      message: `Delete "${prompt.title}"?`,
       onConfirm: async () => {
         const updated = prompts.filter((p) => p.id !== prompt.id);
         setPrompts(updated);
@@ -242,7 +227,7 @@ export default function Home() {
           apiDeletePrompt(prompt.id);
         }
 
-        addToast('Prompt Deleted', `Removed "${prompt.title}".`, 'info');
+        addToast('Prompt Deleted', '', 'info');
         if (promptToView?.id === prompt.id) {
           setIsDetailModalOpen(false);
           setPromptToView(null);
@@ -269,7 +254,7 @@ export default function Home() {
       apiSavePrompt(duplicated);
     }
 
-    addToast('Prompt Duplicated', `Created copy of "${prompt.title}".`);
+    addToast('Prompt Duplicated', `Created copy.`);
   };
 
   const handleToggleFavorite = async (id: string) => {
@@ -312,13 +297,12 @@ export default function Home() {
       });
       setPrompts(updated);
       saveStoredPrompts(updated);
-      addToast('Copied to Clipboard', `Prompt is ready to paste.`, 'success');
+      addToast('Copied to Clipboard', '', 'success');
     } catch {
-      addToast('Copy Failed', 'Please grant clipboard permissions.', 'error');
+      addToast('Copy Failed', '', 'error');
     }
   };
 
-  // Category CRUD
   const handleSaveCategory = async (savedCategory: Category) => {
     let updatedCategories: Category[];
     const exists = categories.some((c) => c.id === savedCategory.id);
@@ -327,10 +311,10 @@ export default function Home() {
       updatedCategories = categories.map((c) =>
         c.id === savedCategory.id ? savedCategory : c
       );
-      addToast('Category Updated', `Saved "${savedCategory.name}".`);
+      addToast('Category Saved', `"${savedCategory.name}".`);
     } else {
       updatedCategories = [...categories, savedCategory];
-      addToast('Category Created', `Created "${savedCategory.name}".`);
+      addToast('Category Created', `"${savedCategory.name}".`);
     }
 
     setCategories(updatedCategories);
@@ -345,8 +329,8 @@ export default function Home() {
     const count = prompts.filter((p) => p.categoryId === category.id).length;
     const message =
       count > 0
-        ? `"${category.name}" contains ${count} prompt(s). Deleting this category will reassign those prompts to default. Proceed?`
-        : `Are you sure you want to delete category "${category.name}"?`;
+        ? `"${category.name}" contains ${count} prompt(s). Delete category?`
+        : `Delete category "${category.name}"?`;
 
     setDeleteModal({
       isOpen: true,
@@ -380,21 +364,20 @@ export default function Home() {
         if (selectedCategory === category.id) {
           setSelectedCategory(null);
         }
-        addToast('Category Deleted', `Removed "${category.name}".`, 'info');
+        addToast('Category Deleted', '', 'info');
       },
     });
   };
 
-  // Quick Links CRUD
   const handleSaveQuickLink = async (savedLink: QuickToolLink) => {
     let updated: QuickToolLink[];
     const exists = quickLinks.some((l) => l.id === savedLink.id);
     if (exists) {
       updated = quickLinks.map((l) => (l.id === savedLink.id ? savedLink : l));
-      addToast('Link Updated', `Saved "${savedLink.name}".`);
+      addToast('Link Saved', `"${savedLink.name}".`);
     } else {
       updated = [...quickLinks, savedLink];
-      addToast('Link Added', `Saved "${savedLink.name}".`);
+      addToast('Link Added', `"${savedLink.name}".`);
     }
     setQuickLinks(updated);
     saveStoredQuickLinks(updated);
@@ -416,7 +399,6 @@ export default function Home() {
     addToast('Link Removed', '', 'info');
   };
 
-  // Export / Import / Reset
   const handleExportVault = () => {
     const jsonStr = exportVaultJSON();
     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -428,7 +410,7 @@ export default function Home() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    addToast('Vault Exported', 'JSON backup file downloaded.', 'success');
+    addToast('Vault Exported', '', 'success');
   };
 
   const handleImportFile = async (file: File) => {
@@ -445,7 +427,6 @@ export default function Home() {
         setPrompts(pList);
         setQuickLinks(qLinks);
 
-        // Sync imported items to MongoDB
         if (dbStatus?.connected) {
           cats.forEach((c) => apiSaveCategory(c));
           pList.forEach((p) => apiSavePrompt(p));
@@ -464,27 +445,24 @@ export default function Home() {
     setDeleteModal({
       isOpen: true,
       title: 'Clear Vault',
-      message: 'Are you sure you want to clear all prompts, categories, and links?',
+      message: 'Clear all prompts, categories, and links?',
       onConfirm: async () => {
         clearVaultData();
         setCategories([]);
         setPrompts([]);
         setQuickLinks([]);
         setSelectedCategory(null);
-        setSelectedModel('ALL');
         setOnlyFavorites(false);
-        setSelectedTag(null);
 
         if (dbStatus?.connected) {
           await apiClearDatabase();
         }
 
-        addToast('Vault Cleared', 'All items removed.', 'info');
+        addToast('Vault Cleared', '', 'info');
       },
     });
   };
 
-  // Category counts
   const promptCountByCategory = useMemo(() => {
     const dict: Record<string, number> = {};
     prompts.forEach((p) => {
@@ -493,7 +471,6 @@ export default function Home() {
     return dict;
   }, [prompts]);
 
-  // Filtered and Sorted Prompts
   const filteredPrompts = useMemo(() => {
     return prompts
       .filter((p) => {
@@ -501,12 +478,6 @@ export default function Home() {
           return false;
         }
         if (onlyFavorites && !p.isFavorite) {
-          return false;
-        }
-        if (selectedModel !== 'ALL' && p.model !== selectedModel) {
-          return false;
-        }
-        if (selectedTag && !p.tags?.includes(selectedTag)) {
           return false;
         }
         if (searchQuery.trim()) {
@@ -536,7 +507,7 @@ export default function Home() {
         }
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [prompts, selectedCategory, onlyFavorites, selectedModel, selectedTag, searchQuery, sortBy, categories]);
+  }, [prompts, selectedCategory, onlyFavorites, searchQuery, sortBy, categories]);
 
   const totalCopies = useMemo(
     () => prompts.reduce((acc, p) => acc + (p.copyCount || 0), 0),
@@ -558,42 +529,35 @@ export default function Home() {
 
   const hasActiveFilters =
     selectedCategory !== null ||
-    selectedModel !== 'ALL' ||
     onlyFavorites ||
-    selectedTag !== null ||
     Boolean(searchQuery.trim());
 
   const clearAllFilters = () => {
     setSelectedCategory(null);
-    setSelectedModel('ALL');
     setOnlyFavorites(false);
-    setSelectedTag(null);
     setSearchQuery('');
   };
 
   if (!isLoaded) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 text-white font-mono text-xs">
-        Loading BOX Vault...
+        Loading...
       </div>
     );
   }
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-      {/* Sidebar with DB connection indicator */}
       <Sidebar
         categories={categories}
         quickLinks={quickLinks}
         selectedCategory={selectedCategory}
-        selectedModel={selectedModel}
         onlyFavorites={onlyFavorites}
         promptCountByCategory={promptCountByCategory}
         totalPromptsCount={prompts.length}
         favoritePromptsCount={favoriteCount}
         dbStatus={dbStatus}
         onSelectCategory={(id) => setSelectedCategory(id)}
-        onSelectModel={(model) => setSelectedModel(model)}
         onToggleOnlyFavorites={() => setOnlyFavorites(!onlyFavorites)}
         onOpenCreateCategory={() => {
           setCategoryToEdit(null);
@@ -608,14 +572,16 @@ export default function Home() {
           setQuickLinkToEdit(null);
           setIsQuickLinkModalOpen(true);
         }}
+        onOpenEditQuickLink={(link) => {
+          setQuickLinkToEdit(link);
+          setIsQuickLinkModalOpen(true);
+        }}
         onDeleteQuickLink={handleDeleteQuickLink}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Navbar */}
         <Navbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -633,9 +599,7 @@ export default function Home() {
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
 
-        {/* Dashboard Main View */}
-        <main className="flex-1 p-4 lg:p-6 max-w-7xl w-full mx-auto space-y-5">
-          {/* Top Analytics / Stats */}
+        <main className="flex-1 p-4 lg:p-6 max-w-7xl w-full mx-auto space-y-4">
           <StatsBar
             totalPrompts={prompts.length}
             totalCategories={categories.length}
@@ -644,66 +608,44 @@ export default function Home() {
             totalFavorites={favoriteCount}
           />
 
-          {/* Active View / Filter Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-800">
-            <div className="flex items-center gap-2.5">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-800/80">
+            <div className="flex items-center gap-2">
               {activeCategoryObj ? (
-                <div className={`p-2 rounded-lg ${activeCategoryColor} text-white`}>
-                  <CategoryIcon name={activeCategoryObj.icon} className="w-4 h-4" />
+                <div className={`p-1.5 rounded-md ${activeCategoryColor} text-white`}>
+                  <CategoryIcon name={activeCategoryObj.icon} className="w-3.5 h-3.5" />
                 </div>
               ) : onlyFavorites ? (
-                <div className="p-2 rounded-lg bg-red-600 text-white">
-                  <Heart className="w-4 h-4 fill-white" />
+                <div className="p-1.5 rounded-md bg-red-600 text-white">
+                  <Heart className="w-3.5 h-3.5 fill-white" />
                 </div>
               ) : (
-                <div className="p-2 rounded-lg bg-zinc-800 text-zinc-200">
-                  <LayoutGrid className="w-4 h-4" />
+                <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+                  <LayoutGrid className="w-3.5 h-3.5" />
                 </div>
               )}
 
-              <div>
-                <h1 className="text-base md:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                  {onlyFavorites
-                    ? 'Favorite Prompts'
-                    : activeCategoryObj
-                    ? activeCategoryObj.name
-                    : searchQuery
-                    ? `Search results for "${searchQuery}"`
-                    : 'All Prompts'}
-                  <span className="text-xs font-mono font-normal text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
-                    {filteredPrompts.length}
-                  </span>
-                </h1>
-                <p className="text-xs text-zinc-400">
-                  {activeCategoryObj?.description ||
-                    (onlyFavorites
-                      ? 'Starred prompts'
-                      : 'Organize and manage your prompt library')}
-                </p>
-              </div>
+              <h1 className="text-base font-semibold text-white tracking-tight flex items-center gap-2">
+                {onlyFavorites
+                  ? 'Favorites'
+                  : activeCategoryObj
+                  ? activeCategoryObj.name
+                  : searchQuery
+                  ? `Search: "${searchQuery}"`
+                  : 'All Prompts'}
+                <span className="text-xs font-mono font-normal text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                  {filteredPrompts.length}
+                </span>
+              </h1>
             </div>
 
-            {/* Active Filter Indicators */}
+            {/* Filter Indicators */}
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-center">
                 {selectedCategory && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
-                    <span>Category: {activeCategoryObj?.name}</span>
-                    <button
-                      onClick={() => setSelectedCategory(null)}
-                      className="hover:text-white"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
-                {selectedModel !== 'ALL' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
-                    <span>Model: {selectedModel}</span>
-                    <button
-                      onClick={() => setSelectedModel('ALL')}
-                      className="hover:text-white"
-                    >
+                    <span>{activeCategoryObj?.name}</span>
+                    <button onClick={() => setSelectedCategory(null)} className="hover:text-white">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
@@ -711,43 +653,34 @@ export default function Home() {
                 {onlyFavorites && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
                     <span>Favorites</span>
-                    <button
-                      onClick={() => setOnlyFavorites(false)}
-                      className="hover:text-white"
-                    >
+                    <button onClick={() => setOnlyFavorites(false)} className="hover:text-white">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
                 )}
                 {searchQuery && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
-                    <span>Query: "{searchQuery}"</span>
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="hover:text-white"
-                    >
+                    <span>"{searchQuery}"</span>
+                    <button onClick={() => setSearchQuery('')} className="hover:text-white">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
                 )}
 
-                <button
-                  onClick={clearAllFilters}
-                  className="text-xs text-zinc-400 hover:text-white underline ml-1"
-                >
-                  Clear all
+                <button onClick={clearAllFilters} className="text-xs text-zinc-400 hover:text-white underline ml-1">
+                  Clear
                 </button>
               </div>
             )}
           </div>
 
-          {/* Prompts Cards / List */}
+          {/* Cards */}
           {filteredPrompts.length > 0 ? (
             <div
               className={
                 viewMode === 'grid'
-                  ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5'
-                  : 'flex flex-col gap-2.5'
+                  ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'
+                  : 'flex flex-col gap-2'
               }
             >
               {filteredPrompts.map((prompt) => {
@@ -775,27 +708,20 @@ export default function Home() {
               })}
             </div>
           ) : (
-            /* Empty State */
-            <div className="flex flex-col items-center justify-center p-12 text-center bg-zinc-900 border border-zinc-800 rounded-xl space-y-3">
-              <div className="p-3 rounded-lg bg-zinc-800 text-zinc-400">
-                <Search className="w-6 h-6" />
+            /* Clean Empty State */
+            <div className="flex flex-col items-center justify-center p-12 text-center bg-zinc-900/60 border border-zinc-800/80 rounded-xl space-y-3">
+              <div className="p-2.5 rounded-lg bg-zinc-800/80 text-zinc-400">
+                <Search className="w-5 h-5" />
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white">No Prompts in Vault</h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  {hasActiveFilters
-                    ? "No prompts match your active search or filter criteria."
-                    : "Your library is ready. Create your first category or prompt to get started."}
-                </p>
-              </div>
+              <h3 className="text-sm font-semibold text-white">No Prompts in Vault</h3>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-1">
                 {hasActiveFilters && (
                   <button
                     onClick={clearAllFilters}
                     className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
                   >
-                    Reset Filters
+                    Reset
                   </button>
                 )}
                 {categories.length === 0 && (
@@ -804,7 +730,7 @@ export default function Home() {
                       setCategoryToEdit(null);
                       setIsCategoryModalOpen(true);
                     }}
-                    className="px-3.5 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition flex items-center gap-1"
+                    className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition flex items-center gap-1"
                   >
                     <FolderPlus className="w-3.5 h-3.5" />
                     <span>Create Category</span>
@@ -815,7 +741,7 @@ export default function Home() {
                     setPromptToEdit(null);
                     setIsPromptModalOpen(true);
                   }}
-                  className="px-4 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition flex items-center gap-1"
+                  className="px-3.5 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Create Prompt</span>
@@ -826,7 +752,6 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Modals */}
       <PromptModal
         isOpen={isPromptModalOpen}
         promptToEdit={promptToEdit}

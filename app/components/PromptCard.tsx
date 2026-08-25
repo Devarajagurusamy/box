@@ -64,20 +64,17 @@ export const PromptCard: React.FC<PromptCardProps> = ({
     return (
       <div
         onClick={() => onOpenDetail(prompt)}
-        className="group relative flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
+        className="group relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
       >
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className={`p-2 rounded-lg ${categoryColor} text-white shrink-0 mt-0.5`}>
-            <CategoryIcon name={category?.icon || 'Folder'} className="w-4 h-4" />
+        <div className="flex items-start gap-2.5 flex-1 min-w-0 w-full">
+          <div className={`p-1.5 sm:p-2 rounded-lg ${categoryColor} text-white shrink-0 mt-0.5`}>
+            <CategoryIcon name={category?.icon || 'Folder'} className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-1.5 mb-1">
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+              <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
                 {category?.name || 'General'}
-              </span>
-              <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                {prompt.model}
               </span>
               {variables.length > 0 && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
@@ -86,7 +83,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
               )}
             </div>
 
-            <h3 className="text-sm font-semibold text-white group-hover:text-zinc-200 transition truncate">
+            <h3 className="text-xs sm:text-sm font-semibold text-white group-hover:text-zinc-200 transition truncate">
               {prompt.title}
             </h3>
 
@@ -101,12 +98,12 @@ export const PromptCard: React.FC<PromptCardProps> = ({
                   <button
                     key={link.id}
                     onClick={(e) => handleLaunchLink(e, link.url)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition"
-                    title={`Open ${link.url}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition max-w-[160px] truncate"
+                    title={link.url}
                   >
-                    <Globe className="w-3 h-3 text-zinc-400" />
-                    <span>{link.title}</span>
-                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                    <Globe className="w-3 h-3 text-zinc-400 shrink-0" />
+                    <span className="truncate">{link.title}</span>
+                    <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
                   </button>
                 ))}
               </div>
@@ -115,99 +112,103 @@ export const PromptCard: React.FC<PromptCardProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite(prompt.id);
-            }}
-            className={`p-1.5 rounded-lg transition ${
-              prompt.isFavorite
-                ? 'text-red-400 bg-red-950/40'
-                : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
-            }`}
-            title="Favorite"
-          >
-            <Heart className={`w-4 h-4 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenDetail(prompt);
-            }}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
-          >
-            <Sliders className="w-3 h-3" />
-            <span>Test / Fill</span>
-          </button>
-
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition"
-          >
-            {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
-
-          {/* Menu */}
-          <div className="relative">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t border-zinc-800/60 sm:border-0">
+          <div className="flex items-center gap-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setMenuOpen(!menuOpen);
+                onToggleFavorite(prompt.id);
               }}
-              className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+              className={`p-1.5 rounded-lg transition ${
+                prompt.isFavorite
+                  ? 'text-red-400 bg-red-950/40'
+                  : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
+              }`}
+              title="Favorite"
             >
-              <MoreVertical className="w-4 h-4" />
+              <Heart className={`w-4 h-4 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
             </button>
 
-            {menuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                  }}
-                />
-                <div className="absolute right-0 top-full mt-1 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl py-1 z-30">
-                  <button
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDetail(prompt);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
+            >
+              <Sliders className="w-3 h-3" />
+              <span>Fill</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition"
+            >
+              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+              <span>{copied ? 'Copied' : 'Copy'}</span>
+            </button>
+
+            {/* Menu */}
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
+                }}
+                className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {menuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
                     onClick={(e) => {
                       e.stopPropagation();
                       setMenuOpen(false);
-                      onEdit(prompt);
                     }}
-                    className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpen(false);
-                      onDuplicate(prompt);
-                    }}
-                    className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
-                  >
-                    <CopyPlus className="w-3 h-3" />
-                    Duplicate
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpen(false);
-                      onDelete(prompt);
-                    }}
-                    className="w-full px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-950/40 flex items-center gap-2"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
+                  />
+                  <div className="absolute right-0 top-full mt-1 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl py-1 z-30">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                        onEdit(prompt);
+                      }}
+                      className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                        onDuplicate(prompt);
+                      }}
+                      className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
+                    >
+                      <CopyPlus className="w-3 h-3" />
+                      Duplicate
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                        onDelete(prompt);
+                      }}
+                      className="w-full px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-950/40 flex items-center gap-2"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -218,27 +219,27 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   return (
     <div
       onClick={() => onOpenDetail(prompt)}
-      className="group relative flex flex-col justify-between p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
+      className="group relative flex flex-col justify-between p-3.5 sm:p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
     >
       <div>
         {/* Top bar: Category + Favorite + Menu */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5 overflow-hidden">
             <div className={`p-1 rounded ${categoryColor} text-white shrink-0`}>
-              <CategoryIcon name={category?.icon || 'Folder'} className="w-3.5 h-3.5" />
+              <CategoryIcon name={category?.icon || 'Folder'} className="w-3 h-3" />
             </div>
             <span className="text-xs font-medium text-zinc-300 truncate">
               {category?.name || 'General'}
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleFavorite(prompt.id);
               }}
-              className={`p-1 rounded-md transition ${
+              className={`p-1.5 rounded-md transition ${
                 prompt.isFavorite
                   ? 'text-red-400 bg-red-950/40'
                   : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
@@ -248,14 +249,13 @@ export const PromptCard: React.FC<PromptCardProps> = ({
               <Heart className={`w-3.5 h-3.5 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
             </button>
 
-            {/* Menu Dropdown */}
             <div className="relative">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setMenuOpen(!menuOpen);
                 }}
-                className="p-1 text-zinc-500 hover:text-white rounded-md hover:bg-zinc-800 transition"
+                className="p-1.5 text-zinc-500 hover:text-white rounded-md hover:bg-zinc-800 transition"
               >
                 <MoreVertical className="w-3.5 h-3.5" />
               </button>
@@ -311,69 +311,55 @@ export const PromptCard: React.FC<PromptCardProps> = ({
         </div>
 
         {/* Title */}
-        <h3 className="text-sm font-semibold text-white group-hover:text-zinc-200 transition line-clamp-1 mb-1">
+        <h3 className="text-xs sm:text-sm font-semibold text-white group-hover:text-zinc-200 transition line-clamp-1 mb-1">
           {prompt.title}
         </h3>
 
         {/* Description */}
         {prompt.description && (
-          <p className="text-xs text-zinc-400 line-clamp-2 mb-2.5 leading-relaxed">
+          <p className="text-xs text-zinc-400 line-clamp-2 mb-2 leading-relaxed">
             {prompt.description}
           </p>
         )}
 
         {/* Content Snippet */}
-        <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800/80 font-mono text-[11px] text-zinc-300 leading-relaxed line-clamp-3 select-none mb-3">
+        <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800/80 font-mono text-[11px] text-zinc-300 leading-relaxed line-clamp-3 select-none mb-2.5">
           {prompt.content}
         </div>
 
         {/* Attached Website Links */}
         {prompt.links && prompt.links.length > 0 && (
-          <div className="mb-3">
+          <div className="mb-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
               {prompt.links.slice(0, 2).map((link) => (
                 <button
                   key={link.id}
                   onClick={(e) => handleLaunchLink(e, link.url)}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition truncate max-w-[150px]"
-                  title={`Open ${link.title} (${link.url})`}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition truncate max-w-[140px]"
+                  title={link.url}
                 >
-                  <Globe className="w-3 h-3 text-zinc-400 shrink-0" />
+                  <Globe className="w-2.5 h-2.5 text-zinc-400 shrink-0" />
                   <span className="truncate">{link.title}</span>
                   <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
                 </button>
               ))}
-              {prompt.links.length > 2 && (
-                <span className="text-[10px] text-zinc-500">+{prompt.links.length - 2} more</span>
-              )}
             </div>
           </div>
         )}
 
-        {/* Tags & Model */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-3">
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
-            {prompt.model}
-          </span>
-          {variables.length > 0 && (
+        {/* Variables badge */}
+        {variables.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 mb-2.5">
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
               {variables.length} vars
             </span>
-          )}
-          {prompt.tags?.slice(0, 2).map((t) => (
-            <span
-              key={t}
-              className="text-[10px] text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-800"
-            >
-              #{t}
-            </span>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Card Footer */}
-      <div className="flex items-center justify-between pt-2.5 border-t border-zinc-800">
-        <span className="text-[11px] text-zinc-500 font-mono">
+      <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
+        <span className="text-[10px] text-zinc-500 font-mono">
           {prompt.copyCount} {prompt.copyCount === 1 ? 'copy' : 'copies'}
         </span>
 
@@ -391,9 +377,9 @@ export const PromptCard: React.FC<PromptCardProps> = ({
 
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>

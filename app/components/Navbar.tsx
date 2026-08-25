@@ -10,7 +10,6 @@ import {
   Upload,
   RotateCcw,
   Menu,
-  SlidersHorizontal,
   X
 } from 'lucide-react';
 import { AIModelType } from '../types';
@@ -53,8 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-20 w-full bg-zinc-950/95 border-b border-zinc-800 px-4 lg:px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
-      {/* Hidden File Input */}
+    <header className="sticky top-0 z-30 w-full bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-6 py-2.5 flex flex-col gap-2.5">
       <input
         type="file"
         ref={fileInputRef}
@@ -63,121 +61,109 @@ export const Navbar: React.FC<NavbarProps> = ({
         className="hidden"
       />
 
-      {/* Search Input */}
-      <div className="flex items-center gap-2.5 w-full md:w-auto flex-1 max-w-xl">
+      {/* Main Row: Mobile Menu + Search Bar + + New Prompt */}
+      <div className="flex items-center justify-between gap-2 w-full">
         <button
           onClick={onToggleMobileSidebar}
-          className="lg:hidden p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white"
-          title="Toggle Navigation"
+          className="lg:hidden p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white shrink-0 active:scale-95 transition"
+          title="Open Menu"
+          aria-label="Open Navigation Menu"
         >
           <Menu className="w-4 h-4" />
         </button>
 
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        {/* Search Bar */}
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search prompts, categories, tags, links (Press '/' to focus)..."
-            className="w-full pl-9 pr-12 py-2 bg-zinc-900 border border-zinc-800 focus:border-zinc-500 rounded-lg text-xs text-white placeholder-zinc-400 focus:outline-none transition"
+            placeholder="Search prompts..."
+            className="w-full pl-9 pr-8 py-2 bg-zinc-900 border border-zinc-800 focus:border-zinc-500 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none transition"
           />
-          {searchQuery ? (
+          {searchQuery && (
             <button
               onClick={() => onSearchChange('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-0.5 rounded"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1 rounded"
+              title="Clear search"
             >
               <X className="w-3.5 h-3.5" />
             </button>
-          ) : (
-            <span className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700">
-              /
-            </span>
           )}
         </div>
+
+        {/* Primary CTA (compact on mobile) */}
+        <button
+          onClick={onOpenCreatePrompt}
+          className="flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-zinc-950 bg-zinc-100 hover:bg-white active:scale-95 rounded-lg transition shrink-0 shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">New Prompt</span>
+          <span className="sm:hidden">New</span>
+        </button>
       </div>
 
-      {/* Controls & Actions */}
-      <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+      {/* Secondary Controls Row on mobile / inline on desktop */}
+      <div className="flex items-center justify-between gap-2 pt-1 sm:pt-0 sm:hidden border-t border-zinc-800/40">
         {/* Sort */}
-        <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5">
-          <SlidersHorizontal className="w-3 h-3 text-zinc-400" />
+        <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 flex-1 max-w-[150px]">
           <select
             value={sortBy}
             onChange={(e) => onChangeSortBy(e.target.value as 'recent' | 'popular' | 'alpha')}
-            className="bg-transparent text-xs text-zinc-300 focus:outline-none cursor-pointer pr-1"
+            className="w-full bg-transparent text-xs text-zinc-300 focus:outline-none cursor-pointer"
           >
-            <option value="recent" className="bg-zinc-900 text-white">
-              Recently Added
-            </option>
-            <option value="popular" className="bg-zinc-900 text-white">
-              Most Copied
-            </option>
-            <option value="alpha" className="bg-zinc-900 text-white">
-              Alphabetical (A-Z)
-            </option>
+            <option value="recent" className="bg-zinc-900 text-white">Recent</option>
+            <option value="popular" className="bg-zinc-900 text-white">Popular</option>
+            <option value="alpha" className="bg-zinc-900 text-white">A-Z</option>
           </select>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
-          <button
-            onClick={() => onToggleViewMode('grid')}
-            className={`p-1.5 rounded-md transition ${
-              viewMode === 'grid'
-                ? 'bg-zinc-800 text-white'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Grid View"
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onToggleViewMode('list')}
-            className={`p-1.5 rounded-md transition ${
-              viewMode === 'list'
-                ? 'bg-zinc-800 text-white'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="List View"
-          >
-            <List className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        {/* View Toggle + Vault Actions */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
+            <button
+              onClick={() => onToggleViewMode('grid')}
+              className={`p-1.5 rounded-md transition ${
+                viewMode === 'grid' ? 'bg-zinc-800 text-white' : 'text-zinc-400'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onToggleViewMode('list')}
+              className={`p-1.5 rounded-md transition ${
+                viewMode === 'list' ? 'bg-zinc-800 text-white' : 'text-zinc-400'
+              }`}
+              title="List View"
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-        {/* Backup / Export / Import / Reset */}
-        <div className="flex items-center gap-1">
           <button
             onClick={onExport}
-            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition"
-            title="Export JSON Vault"
+            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white"
+            title="Export"
           >
             <Download className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition"
-            title="Import JSON Vault"
+            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white"
+            title="Import"
           >
             <Upload className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onResetDemoData}
-            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition"
-            title="Reset Default Prompts"
+            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white"
+            title="Clear Vault"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
-
-        {/* Primary Action Button */}
-        <button
-          onClick={onOpenCreatePrompt}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition shrink-0 shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Prompt</span>
-        </button>
       </div>
     </header>
   );

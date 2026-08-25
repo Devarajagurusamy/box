@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-  Layers,
   Heart,
   Plus,
   Edit2,
@@ -11,40 +10,28 @@ import {
   ExternalLink,
   LayoutGrid,
   Box,
-  Database
+  X
 } from 'lucide-react';
-import { Category, AIModelType, QuickToolLink } from '../types';
+import { Category, QuickToolLink } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 import { DBStatus } from '../apiClient';
-
-const AI_MODELS: (AIModelType | 'ALL')[] = [
-  'ALL',
-  'ChatGPT',
-  'Claude',
-  'Gemini',
-  'DeepSeek',
-  'Midjourney',
-  'Cursor',
-  'General',
-];
 
 interface SidebarProps {
   categories: Category[];
   quickLinks: QuickToolLink[];
   selectedCategory: string | null;
-  selectedModel: AIModelType | 'ALL';
   onlyFavorites: boolean;
   promptCountByCategory: Record<string, number>;
   totalPromptsCount: number;
   favoritePromptsCount: number;
   dbStatus: DBStatus | null;
   onSelectCategory: (catId: string | null) => void;
-  onSelectModel: (model: AIModelType | 'ALL') => void;
   onToggleOnlyFavorites: () => void;
   onOpenCreateCategory: () => void;
   onOpenEditCategory: (category: Category) => void;
   onDeleteCategory: (category: Category) => void;
   onOpenAddQuickLink: () => void;
+  onOpenEditQuickLink: (link: QuickToolLink) => void;
   onDeleteQuickLink: (id: string) => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
@@ -54,56 +41,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
   categories,
   quickLinks,
   selectedCategory,
-  selectedModel,
   onlyFavorites,
   promptCountByCategory,
   totalPromptsCount,
   favoritePromptsCount,
   dbStatus,
   onSelectCategory,
-  onSelectModel,
   onToggleOnlyFavorites,
   onOpenCreateCategory,
   onOpenEditCategory,
   onDeleteCategory,
   onOpenAddQuickLink,
+  onOpenEditQuickLink,
   onDeleteQuickLink,
   isMobileOpen,
   onCloseMobile,
 }) => {
   const isConnected = dbStatus?.connected === true;
 
+  const handleNavClick = (callback: () => void) => {
+    callback();
+    onCloseMobile();
+  };
+
   return (
     <>
       {/* Mobile Backdrop */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden transition-opacity duration-200"
           onClick={onCloseMobile}
         />
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-40 h-screen w-64 bg-zinc-950 border-r border-zinc-800 flex flex-col justify-between transition-transform duration-200 ease-in-out ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 sm:w-60 max-w-[85vw] bg-zinc-950 border-r border-zinc-800/80 flex flex-col justify-between transition-transform duration-200 ease-in-out ${
+          isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Brand Header */}
-        <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+        <div className="p-4 border-b border-zinc-800/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
+            <div className="w-7 h-7 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
               <Box className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-tight text-white font-mono">BOX</span>
-                <span className="text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-                  PROMPT VAULT
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400">Library and Link Manager</p>
-            </div>
+            <span className="font-bold text-base tracking-tight text-white font-mono">BOX</span>
           </div>
+
+          {/* Close button for mobile */}
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition"
+            title="Close menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Scrollable Navigation */}
@@ -112,17 +104,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="space-y-1">
             <button
               onClick={() => {
-                onSelectCategory(null);
-                if (onlyFavorites) onToggleOnlyFavorites();
+                handleNavClick(() => {
+                  onSelectCategory(null);
+                  if (onlyFavorites) onToggleOnlyFavorites();
+                });
               }}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition ${
                 selectedCategory === null && !onlyFavorites
                   ? 'bg-zinc-800 text-white'
                   : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <LayoutGrid className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-2.5">
+                <LayoutGrid className="w-4 h-4" />
                 <span>All Prompts</span>
               </div>
               <span className="text-[11px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 font-mono">
@@ -131,15 +125,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
 
             <button
-              onClick={onToggleOnlyFavorites}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
+              onClick={() => {
+                handleNavClick(() => {
+                  onToggleOnlyFavorites();
+                });
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition ${
                 onlyFavorites
                   ? 'bg-zinc-800 text-white'
                   : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Heart className={`w-3.5 h-3.5 ${onlyFavorites ? 'fill-white text-white' : 'text-zinc-400'}`} />
+              <div className="flex items-center gap-2.5">
+                <Heart className={`w-4 h-4 ${onlyFavorites ? 'fill-white text-white' : 'text-zinc-400'}`} />
                 <span>Favorites</span>
               </div>
               <span className="text-[11px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 font-mono">
@@ -151,21 +149,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Categories List */}
           <div>
             <div className="flex items-center justify-between px-2 mb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
                 Categories
               </span>
               <button
-                onClick={onOpenCreateCategory}
-                className="text-[11px] text-zinc-400 hover:text-zinc-100 p-0.5 rounded transition flex items-center gap-1"
-                title="Create New Category"
+                onClick={() => {
+                  onOpenCreateCategory();
+                  if (window.innerWidth < 1024) onCloseMobile();
+                }}
+                className="text-xs text-zinc-400 hover:text-zinc-100 p-1 rounded transition flex items-center gap-1"
+                title="Add Category"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Add</span>
               </button>
             </div>
 
             {categories.length > 0 ? (
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {categories.map((cat) => {
                   const isSelected = selectedCategory === cat.id && !onlyFavorites;
                   const count = promptCountByCategory[cat.id] || 0;
@@ -174,44 +175,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   return (
                     <div
                       key={cat.id}
-                      className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                      className={`group flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
                         isSelected
                           ? 'bg-zinc-800 text-white'
                           : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                       }`}
                       onClick={() => {
-                        if (onlyFavorites) onToggleOnlyFavorites();
-                        onSelectCategory(cat.id);
+                        handleNavClick(() => {
+                          if (onlyFavorites) onToggleOnlyFavorites();
+                          onSelectCategory(cat.id);
+                        });
                       }}
                     >
                       <div className="flex items-center gap-2 truncate">
                         <div className={`p-1 rounded ${colorClass} text-white shrink-0`}>
-                          <CategoryIcon name={cat.icon} className="w-3 h-3" />
+                          <CategoryIcon name={cat.icon} className="w-3.5 h-3.5" />
                         </div>
                         <span className="truncate">{cat.name}</span>
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <div className="hidden group-hover:flex items-center gap-0.5">
+                        <div className="flex lg:hidden group-hover:flex items-center gap-0.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onOpenEditCategory(cat);
+                              if (window.innerWidth < 1024) onCloseMobile();
                             }}
                             className="p-1 text-zinc-400 hover:text-white rounded hover:bg-zinc-700"
-                            title="Edit Category"
+                            title="Edit"
                           >
-                            <Edit2 className="w-2.5 h-2.5" />
+                            <Edit2 className="w-3 h-3" />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onDeleteCategory(cat);
+                              if (window.innerWidth < 1024) onCloseMobile();
                             }}
                             className="p-1 text-zinc-400 hover:text-red-400 rounded hover:bg-zinc-700"
-                            title="Delete Category"
+                            title="Delete"
                           >
-                            <Trash2 className="w-2.5 h-2.5" />
+                            <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
 
@@ -225,55 +230,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             ) : (
               <button
-                onClick={onOpenCreateCategory}
-                className="w-full text-left px-2.5 py-2 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 border border-dashed border-zinc-800 transition flex items-center gap-1.5"
+                onClick={() => {
+                  onOpenCreateCategory();
+                  if (window.innerWidth < 1024) onCloseMobile();
+                }}
+                className="w-full text-left px-2.5 py-2 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition flex items-center gap-1.5"
               >
-                <Plus className="w-3 h-3" />
-                <span>Add first category</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>New category</span>
               </button>
             )}
           </div>
 
-          {/* AI Models Filter */}
-          <div>
-            <div className="px-2 mb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                Model Filter
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1 px-1">
-              {AI_MODELS.map((m) => {
-                const isSelected = selectedModel === m;
-                return (
-                  <button
-                    key={m}
-                    onClick={() => onSelectModel(m)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${
-                      isSelected
-                        ? 'bg-zinc-200 text-zinc-950 font-semibold'
-                        : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Stored Quick AI Web Links */}
+          {/* Web Links */}
           <div>
             <div className="flex items-center justify-between px-2 mb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                <Globe className="w-3 h-3 text-zinc-400" />
-                Web Links
+              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-zinc-400" />
+                Links
               </span>
               <button
-                onClick={onOpenAddQuickLink}
-                className="text-[11px] text-zinc-400 hover:text-zinc-100 p-0.5 rounded transition flex items-center gap-1"
-                title="Add Web Link"
+                onClick={() => {
+                  onOpenAddQuickLink();
+                  if (window.innerWidth < 1024) onCloseMobile();
+                }}
+                className="text-xs text-zinc-400 hover:text-zinc-100 p-1 rounded transition flex items-center gap-1"
+                title="Add Link"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Add</span>
               </button>
             </div>
@@ -283,23 +267,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {quickLinks.map((link) => (
                   <div
                     key={link.id}
-                    className="group flex items-center justify-between px-2 py-1.5 rounded-lg bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800/60 hover:border-zinc-700 transition"
+                    className="group flex items-center justify-between px-2 py-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800/60 hover:border-zinc-700 transition"
                   >
                     <a
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 min-w-0 flex-1"
-                      title={`Open ${link.name} (${link.url})`}
+                      className="flex items-center gap-2 min-w-0 flex-1 py-0.5"
+                      title={link.url}
                     >
                       <div className="p-1 rounded bg-zinc-800 text-zinc-300 shrink-0">
-                        <Globe className="w-2.5 h-2.5" />
+                        <Globe className="w-3 h-3" />
                       </div>
-                      <div className="truncate">
-                        <p className="text-[11px] font-medium text-zinc-300 group-hover:text-white truncate">
-                          {link.name}
-                        </p>
-                      </div>
+                      <span className="text-xs text-zinc-300 group-hover:text-white truncate">
+                        {link.name}
+                      </span>
                     </a>
 
                     <div className="flex items-center gap-1">
@@ -307,16 +289,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-0.5 text-zinc-400 hover:text-zinc-200"
+                        className="p-1 text-zinc-400 hover:text-zinc-200"
+                        title="Open Link"
                       >
-                        <ExternalLink className="w-2.5 h-2.5" />
+                        <ExternalLink className="w-3 h-3" />
                       </a>
                       <button
-                        onClick={() => onDeleteQuickLink(link.id)}
-                        className="hidden group-hover:block p-0.5 text-zinc-400 hover:text-red-400"
-                        title="Remove Bookmark"
+                        onClick={() => {
+                          onOpenEditQuickLink(link);
+                          if (window.innerWidth < 1024) onCloseMobile();
+                        }}
+                        className="p-1 text-zinc-400 hover:text-white rounded hover:bg-zinc-700 transition"
+                        title="Edit Link"
                       >
-                        <Trash2 className="w-2.5 h-2.5" />
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteQuickLink(link.id)}
+                        className="p-1 text-zinc-400 hover:text-red-400 rounded hover:bg-zinc-700 transition"
+                        title="Delete Link"
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -324,41 +317,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             ) : (
               <button
-                onClick={onOpenAddQuickLink}
-                className="w-full text-left px-2.5 py-2 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 border border-dashed border-zinc-800 transition flex items-center gap-1.5"
+                onClick={() => {
+                  onOpenAddQuickLink();
+                  if (window.innerWidth < 1024) onCloseMobile();
+                }}
+                className="w-full text-left px-2.5 py-2 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition flex items-center gap-1.5"
               >
-                <Plus className="w-3 h-3" />
-                <span>Add first web link</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>New link</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Footer with Database Connection Status */}
-        <div className="p-3 border-t border-zinc-800 space-y-1.5 bg-zinc-950">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[11px]">
-              <Database className="w-3 h-3 text-zinc-400" />
-              <span className="text-zinc-400">Database:</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isConnected ? 'bg-emerald-500' : 'bg-zinc-500'
-                }`}
-              />
-              <span
-                className={`text-[10px] font-medium ${
-                  isConnected ? 'text-emerald-400' : 'text-zinc-400'
-                }`}
-              >
-                {isConnected ? 'MongoDB' : 'Local Vault'}
-              </span>
-            </div>
-          </div>
-          <div className="text-[10px] text-zinc-400 flex items-center justify-between">
-            <span>BOX Prompt Vault</span>
-            <span className="font-mono">v1.1</span>
+        {/* Footer Status */}
+        <div className="p-3.5 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isConnected ? 'bg-emerald-500' : 'bg-zinc-500'
+              }`}
+            />
+            <span className="text-zinc-400 font-medium">
+              {isConnected ? 'MongoDB' : 'Local'}
+            </span>
           </div>
         </div>
       </aside>

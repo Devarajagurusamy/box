@@ -7,7 +7,6 @@ import {
   Heart,
   ExternalLink,
   Sliders,
-  MoreVertical,
   Edit2,
   CopyPlus,
   Trash2,
@@ -40,7 +39,6 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   onToggleFavorite,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const variables = Array.from(
     new Set((prompt.content.match(/\{\{([a-zA-Z0-9_-]+)\}\}/g) || []).map((v) => v.replace(/[{}]/g, '')))
@@ -112,104 +110,73 @@ export const PromptCard: React.FC<PromptCardProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t border-zinc-800/60 sm:border-0">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFavorite(prompt.id);
-              }}
-              className={`p-1.5 rounded-lg transition ${
-                prompt.isFavorite
-                  ? 'text-red-400 bg-red-950/40'
-                  : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
-              }`}
-              title="Favorite"
-            >
-              <Heart className={`w-4 h-4 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
-            </button>
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t border-zinc-800/60 sm:border-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(prompt.id);
+            }}
+            className={`p-1.5 rounded-lg transition ${
+              prompt.isFavorite
+                ? 'text-red-400 bg-red-950/40'
+                : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
+            }`}
+            title={prompt.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
+          >
+            <Heart className={`w-4 h-4 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
+          </button>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenDetail(prompt);
-              }}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
-            >
-              <Sliders className="w-3 h-3" />
-              <span>Fill</span>
-            </button>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(prompt);
+            }}
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition"
+            title="Edit Prompt"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition"
-            >
-              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
-            </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate(prompt);
+            }}
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition"
+            title="Duplicate Prompt"
+          >
+            <CopyPlus className="w-3.5 h-3.5" />
+          </button>
 
-            {/* Menu */}
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(!menuOpen);
-                }}
-                className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(prompt);
+            }}
+            className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition"
+            title="Delete Prompt"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
 
-              {menuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpen(false);
-                    }}
-                  />
-                  <div className="absolute right-0 top-full mt-1 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl py-1 z-30">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpen(false);
-                        onEdit(prompt);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpen(false);
-                        onDuplicate(prompt);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
-                    >
-                      <CopyPlus className="w-3 h-3" />
-                      Duplicate
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpen(false);
-                        onDelete(prompt);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-950/40 flex items-center gap-2"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Delete
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail(prompt);
+            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition ml-1"
+          >
+            <Sliders className="w-3 h-3" />
+            <span>Fill</span>
+          </button>
+
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition"
+          >
+            {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
         </div>
       </div>
     );
@@ -222,7 +189,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
       className="group relative flex flex-col justify-between p-3.5 sm:p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
     >
       <div>
-        {/* Top bar: Category + Favorite + Menu */}
+        {/* Top bar: Category + Actions (Favorite, Edit, Duplicate, Delete) */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5 overflow-hidden">
             <div className={`p-1 rounded ${categoryColor} text-white shrink-0`}>
@@ -233,7 +200,8 @@ export const PromptCard: React.FC<PromptCardProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-0.5">
+          {/* Direct Actions (kept outside, no 3-dot dropdown) */}
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -244,69 +212,43 @@ export const PromptCard: React.FC<PromptCardProps> = ({
                   ? 'text-red-400 bg-red-950/40'
                   : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
-              title="Favorite"
+              title={prompt.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
             >
               <Heart className={`w-3.5 h-3.5 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
             </button>
 
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(!menuOpen);
-                }}
-                className="p-1.5 text-zinc-500 hover:text-white rounded-md hover:bg-zinc-800 transition"
-              >
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(prompt);
+              }}
+              className="p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition"
+              title="Edit Prompt"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
 
-              {menuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpen(false);
-                    }}
-                  />
-                  <div className="absolute right-0 top-full mt-1 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl py-1 z-30">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpen(false);
-                        onEdit(prompt);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpen(false);
-                        onDuplicate(prompt);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
-                    >
-                      <CopyPlus className="w-3 h-3" />
-                      Duplicate
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpen(false);
-                        onDelete(prompt);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-950/40 flex items-center gap-2"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Delete
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate(prompt);
+              }}
+              className="p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition"
+              title="Duplicate Prompt"
+            >
+              <CopyPlus className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(prompt);
+              }}
+              className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-950/30 rounded-md transition"
+              title="Delete Prompt"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 

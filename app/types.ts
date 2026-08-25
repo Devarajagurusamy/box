@@ -1,3 +1,13 @@
+export type AIModelType =
+  | 'ChatGPT'
+  | 'Claude'
+  | 'Gemini'
+  | 'DeepSeek'
+  | 'Midjourney'
+  | 'Cursor'
+  | 'General'
+  | string;
+
 export interface PromptLink {
   id: string;
   title: string;
@@ -11,7 +21,7 @@ export interface Prompt {
   content: string;
   categoryId: string;
   tags: string[];
-  model?: string;
+  model?: AIModelType;
   links: PromptLink[];
   isFavorite: boolean;
   copyCount: number;

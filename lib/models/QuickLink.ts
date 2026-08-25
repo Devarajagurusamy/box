@@ -1,6 +1,6 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Model } from 'mongoose';
 
-export interface IQuickLink extends Document {
+export interface IQuickLink {
   id: string;
   name: string;
   url: string;
@@ -20,7 +20,7 @@ const QuickLinkSchema = new Schema<IQuickLink>(
   },
   {
     toJSON: {
-      transform(_doc, ret) {
+      transform(_doc, ret: Record<string, any>) {
         delete ret._id;
         delete ret.__v;
         return ret;

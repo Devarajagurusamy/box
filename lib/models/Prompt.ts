@@ -1,14 +1,14 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Model } from 'mongoose';
 import { PromptLink, AIModelType } from '@/app/types';
 
-export interface IPrompt extends Document {
+export interface IPrompt {
   id: string;
   title: string;
   description: string;
   content: string;
   categoryId: string;
   tags: string[];
-  model: AIModelType;
+  model?: AIModelType;
   links: PromptLink[];
   isFavorite: boolean;
   copyCount: number;
@@ -35,7 +35,6 @@ const PromptSchema = new Schema<IPrompt>(
     tags: { type: [String], default: [] },
     model: {
       type: String,
-      enum: ['ChatGPT', 'Claude', 'Gemini', 'DeepSeek', 'Midjourney', 'Cursor', 'General'],
       default: 'General',
     },
     links: { type: [PromptLinkSchema], default: [] },
@@ -47,7 +46,7 @@ const PromptSchema = new Schema<IPrompt>(
   {
     timestamps: false,
     toJSON: {
-      transform(_doc, ret) {
+      transform(_doc, ret: Record<string, any>) {
         delete ret._id;
         delete ret.__v;
         return ret;

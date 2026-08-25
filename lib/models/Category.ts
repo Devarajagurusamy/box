@@ -1,6 +1,6 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Model } from 'mongoose';
 
-export interface ICategory extends Document {
+export interface ICategory {
   id: string;
   name: string;
   icon: string;
@@ -18,7 +18,7 @@ const CategorySchema = new Schema<ICategory>(
   },
   {
     toJSON: {
-      transform(_doc, ret) {
+      transform(_doc, ret: Record<string, any>) {
         delete ret._id;
         delete ret.__v;
         return ret;

@@ -57,6 +57,7 @@ export interface QuickToolLink {
   isPublic?: boolean;
   authorName?: string;
   likedBy?: string[];
+  isFavorite?: boolean;
 }
 
 export interface ToastMessage {

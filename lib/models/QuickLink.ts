@@ -11,6 +11,7 @@ export interface IQuickLink {
   isPublic: boolean;
   authorName: string;
   likedBy: string[];
+  isFavorite?: boolean;
 }
 
 const QuickLinkSchema = new Schema<IQuickLink>(
@@ -25,6 +26,7 @@ const QuickLinkSchema = new Schema<IQuickLink>(
     isPublic: { type: Boolean, default: true, index: true },
     authorName: { type: String, default: 'Community' },
     likedBy: { type: [String], default: [] },
+    isFavorite: { type: Boolean, default: false },
   },
   {
     toJSON: {

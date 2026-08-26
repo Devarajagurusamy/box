@@ -72,6 +72,7 @@ interface SidebarProps {
   onOpenAddQuickLink: () => void;
   onOpenEditQuickLink: (link: QuickToolLink) => void;
   onDeleteQuickLink: (id: string) => void;
+  onToggleFavoriteQuickLink?: (id: string) => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   onOpenDeveloperModal?: () => void;
@@ -98,6 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAddQuickLink,
   onOpenEditQuickLink,
   onDeleteQuickLink,
+  onToggleFavoriteQuickLink,
   isMobileOpen,
   onCloseMobile,
   onOpenDeveloperModal,
@@ -370,7 +372,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </span>
                     </a>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
+                      {onToggleFavoriteQuickLink && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavoriteQuickLink(link.id);
+                          }}
+                          className={`p-1 rounded transition ${
+                            link.isFavorite
+                              ? 'text-red-400 bg-red-950/40'
+                              : 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800'
+                          }`}
+                          title={
+                            activeSpace === 'public'
+                              ? link.isFavorite
+                                ? 'Saved in Personal Space'
+                                : 'Like & Save to Personal Space'
+                              : link.isFavorite
+                              ? 'Remove Favorite'
+                              : 'Add to Favorites'
+                          }
+                        >
+                          <Heart className={`w-3 h-3 ${link.isFavorite ? 'fill-red-400' : ''}`} />
+                        </button>
+                      )}
                       <a
                         href={link.url}
                         target="_blank"

@@ -37,7 +37,16 @@ export async function GET(req: NextRequest) {
     }
 
     const links = await QuickLinkModel.find(query);
-    return NextResponse.json(links);
+
+    const formattedLinks = links.map((l) => {
+      const doc: any = l.toJSON();
+      if (userId) {
+        doc.isFavorite = Boolean(l.likedBy && l.likedBy.includes(userId)) || (l.userId === userId && l.isFavorite);
+      }
+      return doc;
+    });
+
+    return NextResponse.json(formattedLinks);
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: errorMsg }, { status: 500 });

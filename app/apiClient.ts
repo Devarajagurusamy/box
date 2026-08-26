@@ -137,6 +137,18 @@ export async function apiSaveQuickLink(link: QuickToolLink): Promise<boolean> {
   }
 }
 
+export async function apiToggleLikeQuickLink(id: string): Promise<{ success: boolean; isFavorite: boolean; likesCount?: number } | null> {
+  try {
+    const res = await fetch(`/api/quick-links/${id}/like`, {
+      method: 'POST',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function apiDeleteQuickLink(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/quick-links/${id}`, { method: 'DELETE' });

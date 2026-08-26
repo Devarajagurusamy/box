@@ -46,6 +46,7 @@ import {
   apiDeleteCategory,
   apiFetchQuickLinks,
   apiSaveQuickLink,
+  apiToggleLikeQuickLink,
   apiDeleteQuickLink,
   apiClearDatabase
 } from './apiClient';
@@ -357,6 +358,49 @@ export default function Home() {
 
     if (promptToView && promptToView.id === id) {
       setPromptToView({ ...promptToView, isFavorite: !promptToView.isFavorite });
+    }
+  };
+
+  // Like & Auto-Save Link to Personal Space
+  const handleToggleFavoriteLink = async (id: string) => {
+    const targetLink = quickLinks.find((l) => l.id === id);
+
+    if (!isSignedIn) {
+      addToast(
+        'Sign In Required',
+        'Sign in to save this link to your personal space.',
+        'info'
+      );
+      openSignIn();
+      return;
+    }
+
+    if (dbStatus?.connected) {
+      apiToggleLikeQuickLink(id);
+    }
+
+    const updated = quickLinks.map((l) => {
+      if (l.id === id) {
+        const nextFav = !l.isFavorite;
+        const updatedItem = { ...l, isFavorite: nextFav };
+
+        if (nextFav) {
+          addToast(
+            'Saved Link to Personal Space!',
+            `"${l.name}" is now saved in your Personal Space.`,
+            'success'
+          );
+        } else {
+          addToast('Removed from Favorites', `"${l.name}"`, 'info');
+        }
+        return updatedItem;
+      }
+      return l;
+    });
+
+    setQuickLinks(updated);
+    if (activeSpace === 'public') {
+      saveStoredQuickLinks(updated);
     }
   };
 
@@ -711,6 +755,7 @@ export default function Home() {
           setIsQuickLinkModalOpen(true);
         }}
         onDeleteQuickLink={handleDeleteQuickLink}
+        onToggleFavoriteQuickLink={handleToggleFavoriteLink}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onOpenDeveloperModal={() => setIsDeveloperModalOpen(true)}

@@ -51,6 +51,7 @@ import { PromptDetailModal } from './components/PromptDetailModal';
 import { CategoryModal } from './components/CategoryModal';
 import { QuickLinkModal } from './components/QuickLinkModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { DeveloperModal } from './components/DeveloperModal';
 import { ToastContainer } from './components/Toast';
 import { CategoryIcon } from './components/CategoryIcon';
 
@@ -82,6 +83,8 @@ export default function Home() {
 
   const [isQuickLinkModalOpen, setIsQuickLinkModalOpen] = useState(false);
   const [quickLinkToEdit, setQuickLinkToEdit] = useState<QuickToolLink | null>(null);
+
+  const [isDeveloperModalOpen, setIsDeveloperModalOpen] = useState(false);
 
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -615,6 +618,7 @@ export default function Home() {
         onDeleteQuickLink={handleDeleteQuickLink}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        onOpenDeveloperModal={() => setIsDeveloperModalOpen(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -811,6 +815,54 @@ export default function Home() {
               </div>
             </div>
           )}
+          {/* Page Footer */}
+          <footer className="pt-8 pb-4 border-t border-zinc-800/80 mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-400">
+            <div className="flex items-center gap-2">
+              <span>Crafted with precision by</span>
+              <button
+                onClick={() => setIsDeveloperModalOpen(true)}
+                className="font-medium text-white hover:underline underline-offset-4 decoration-zinc-500 font-mono flex items-center gap-1.5"
+              >
+                DEVARAJA S G
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs">
+              <a
+                href="https://devaraja-fs-portfolio.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition"
+              >
+                Portfolio
+              </a>
+              <span>•</span>
+              <a
+                href="https://github.com/Devarajagurusamy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition"
+              >
+                GitHub
+              </a>
+              <span>•</span>
+              <a
+                href="https://linkedin.com/in/devaraja-s-g"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition"
+              >
+                LinkedIn
+              </a>
+              <span>•</span>
+              <a
+                href="mailto:devarajaguru2002@gmail.com"
+                className="hover:text-white transition"
+              >
+                Email
+              </a>
+            </div>
+          </footer>
         </main>
       </div>
 
@@ -867,6 +919,11 @@ export default function Home() {
           setQuickLinkToEdit(null);
         }}
         onSave={handleSaveQuickLink}
+      />
+
+      <DeveloperModal
+        isOpen={isDeveloperModalOpen}
+        onClose={() => setIsDeveloperModalOpen(false)}
       />
 
       <DeleteConfirmModal

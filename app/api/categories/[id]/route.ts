@@ -9,11 +9,6 @@ interface Context {
 
 export async function PUT(req: NextRequest, { params }: Context) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
-    }
-
     const mongoose = await connectToDatabase();
     if (!mongoose) {
       return NextResponse.json({ error: 'Database connection unavailable' }, { status: 503 });
@@ -21,6 +16,12 @@ export async function PUT(req: NextRequest, { params }: Context) {
 
     const { id } = await params;
     const body = await req.json();
+    const { userId } = await auth();
+
+    const existing = await CategoryModel.findOne({ id });
+    if (existing && existing.userId && existing.userId !== userId && !existing.isPublic) {
+      return NextResponse.json({ error: 'Unauthorized to edit this category.' }, { status: 401 });
+    }
 
     const updated = await CategoryModel.findOneAndUpdate(
       { id },
@@ -37,23 +38,25 @@ export async function PUT(req: NextRequest, { params }: Context) {
 
 export async function DELETE(_req: NextRequest, { params }: Context) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
-    }
-
     const mongoose = await connectToDatabase();
     if (!mongoose) {
       return NextResponse.json({ error: 'Database connection unavailable' }, { status: 503 });
     }
 
     const { id } = await params;
-    const deleted = await CategoryModel.findOneAndDelete({ id });
-    if (!deleted) {
+    const { userId } = await auth();
+
+    const existing = await CategoryModel.findOne({ id });
+    if (!existing) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, id });
+    if (existing.userId && existing.userId !== userId && !existing.isPublic) {
+      return NextResponse.json({ error: 'Unauthorized to delete this category.' }, { status: 401 });
+    }
+
+    const deleted = await CategoryModel.findOneAndDelete({ id });
+    return NextResponse.json({ success: true, id: deleted?.id });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: errorMsg }, { status: 500 });

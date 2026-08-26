@@ -815,54 +815,7 @@ export default function Home() {
               </div>
             </div>
           )}
-          {/* Page Footer */}
-          <footer className="pt-8 pb-4 border-t border-zinc-800/80 mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-400">
-            <div className="flex items-center gap-2">
-              <span>Crafted with precision by</span>
-              <button
-                onClick={() => setIsDeveloperModalOpen(true)}
-                className="font-medium text-white hover:underline underline-offset-4 decoration-zinc-500 font-mono flex items-center gap-1.5"
-              >
-                DEVARAJA S G
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 text-xs">
-              <a
-                href="https://devaraja-fs-portfolio.vercel.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition"
-              >
-                Portfolio
-              </a>
-              <span>•</span>
-              <a
-                href="https://github.com/Devarajagurusamy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition"
-              >
-                GitHub
-              </a>
-              <span>•</span>
-              <a
-                href="https://linkedin.com/in/devaraja-s-g"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition"
-              >
-                LinkedIn
-              </a>
-              <span>•</span>
-              <a
-                href="mailto:devarajaguru2002@gmail.com"
-                className="hover:text-white transition"
-              >
-                Email
-              </a>
-            </div>
-          </footer>
+         
         </main>
       </div>
 

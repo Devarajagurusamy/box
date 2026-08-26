@@ -786,50 +786,6 @@ export default function Home() {
         />
 
         <main className="flex-1 p-4 lg:p-6 max-w-7xl w-full mx-auto space-y-4">
-          {/* Space Banner Info */}
-          <div className="p-3 sm:p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${activeSpace === 'public' ? 'bg-blue-950/60 text-blue-400 border border-blue-800/60' : 'bg-amber-950/60 text-amber-400 border border-amber-800/60'}`}>
-                {activeSpace === 'public' ? <Globe2 className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-bold text-white">
-                    {activeSpace === 'public' ? 'Public Community Vault' : 'Personal Space'}
-                  </h2>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${activeSpace === 'public' ? 'bg-blue-950 text-blue-300 border-blue-800' : 'bg-amber-950 text-amber-300 border-amber-800'}`}>
-                    {activeSpace === 'public' ? 'Open to All • No Login' : 'Private • Authenticated'}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  {activeSpace === 'public'
-                    ? 'Explore, test variables, copy, and publish public prompts and links freely without signing in.'
-                    : 'Your private workspace storing your own prompts, links, and favorited community prompts.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-              {activeSpace === 'public' ? (
-                <button
-                  onClick={() => handleChangeSpace('personal')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 transition"
-                >
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Go to Personal Space</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleChangeSpace('public')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 transition"
-                >
-                  <Globe2 className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Go to Public Vault</span>
-                </button>
-              )}
-            </div>
-          </div>
-
           <StatsBar
             totalPrompts={prompts.length}
             totalCategories={categories.length}

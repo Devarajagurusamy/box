@@ -10,15 +10,18 @@ import {
   Sliders,
   Heart,
   Edit3,
-  Share2
+  Share2,
+  Lock,
+  Globe2
 } from 'lucide-react';
-import { Prompt, Category } from '../types';
+import { Prompt, Category, VaultSpace } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 
 interface PromptDetailModalProps {
   isOpen: boolean;
   prompt: Prompt | null;
   category?: Category;
+  activeSpace?: VaultSpace;
   onClose: () => void;
   onCopy: (text: string, title: string) => void;
   onEdit: (prompt: Prompt) => void;
@@ -30,6 +33,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
   isOpen,
   prompt,
   category,
+  activeSpace = 'public',
   onClose,
   onCopy,
   onEdit,
@@ -52,6 +56,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
       });
       setVariableValues(initialVars);
       setCopied(false);
+      setShared(false);
     }
   }, [prompt]);
 
@@ -62,6 +67,8 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
     const val = variableValues[v] || `{{${v}}}`;
     interpolatedContent = interpolatedContent.split(`{{${v}}}`).join(val);
   });
+
+  const isPublicPrompt = prompt.isPublic !== false;
 
   const handleCopyClick = () => {
     onCopy(interpolatedContent, prompt.title);
@@ -97,7 +104,7 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
   const categoryColor = category?.color?.startsWith('bg-') ? category.color : 'bg-zinc-700';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-150">
       <div className="relative w-full max-w-3xl my-auto bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden text-zinc-100 flex flex-col max-h-[95vh] sm:max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-zinc-800 bg-zinc-900 sticky top-0 z-10">
@@ -106,10 +113,26 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
               <CategoryIcon name={category?.icon || 'Folder'} className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
                   {category?.name || 'General'}
                 </span>
+                {isPublicPrompt ? (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-950/50 text-blue-300 border border-blue-800/40 inline-flex items-center gap-0.5">
+                    <Globe2 className="w-2.5 h-2.5" />
+                    <span>Public</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-950/50 text-amber-300 border border-amber-800/40 inline-flex items-center gap-0.5">
+                    <Lock className="w-2.5 h-2.5" />
+                    <span>Personal</span>
+                  </span>
+                )}
+                {prompt.authorName && (
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    by {prompt.authorName}
+                  </span>
+                )}
               </div>
               <h2 className="text-sm sm:text-base font-bold text-white mt-0.5 truncate">{prompt.title}</h2>
             </div>
@@ -130,7 +153,15 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
                   ? 'bg-red-950/40 text-red-400 border-red-800/60'
                   : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-red-400'
               }`}
-              title="Favorite"
+              title={
+                activeSpace === 'public'
+                  ? prompt.isFavorite
+                    ? 'Saved in Personal Space'
+                    : 'Like & Save to Personal Space'
+                  : prompt.isFavorite
+                  ? 'Remove Favorite'
+                  : 'Add to Favorites'
+              }
             >
               <Heart className={`w-3.5 h-3.5 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
             </button>

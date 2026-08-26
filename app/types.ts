@@ -8,6 +8,8 @@ export type AIModelType =
   | 'General'
   | string;
 
+export type VaultSpace = 'public' | 'personal';
+
 export interface PromptLink {
   id: string;
   title: string;
@@ -27,6 +29,11 @@ export interface Prompt {
   copyCount: number;
   createdAt: string;
   updatedAt: string;
+  userId?: string | null;
+  isPublic?: boolean;
+  authorName?: string;
+  likedBy?: string[];
+  originalPromptId?: string;
 }
 
 export interface Category {
@@ -35,6 +42,8 @@ export interface Category {
   icon: string;
   color: string;
   description: string;
+  userId?: string | null;
+  isPublic?: boolean;
 }
 
 export interface QuickToolLink {
@@ -44,6 +53,10 @@ export interface QuickToolLink {
   iconName: string;
   category: string;
   description: string;
+  userId?: string | null;
+  isPublic?: boolean;
+  authorName?: string;
+  likedBy?: string[];
 }
 
 export interface ToastMessage {

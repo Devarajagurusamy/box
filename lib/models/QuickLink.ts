@@ -7,6 +7,10 @@ export interface IQuickLink {
   iconName: string;
   category: string;
   description: string;
+  userId?: string | null;
+  isPublic: boolean;
+  authorName: string;
+  likedBy: string[];
 }
 
 const QuickLinkSchema = new Schema<IQuickLink>(
@@ -17,6 +21,10 @@ const QuickLinkSchema = new Schema<IQuickLink>(
     iconName: { type: String, default: 'Globe' },
     category: { type: String, default: 'Tool' },
     description: { type: String, default: '' },
+    userId: { type: String, default: null, index: true },
+    isPublic: { type: Boolean, default: true, index: true },
+    authorName: { type: String, default: 'Community' },
+    likedBy: { type: [String], default: [] },
   },
   {
     toJSON: {

@@ -11,15 +11,18 @@ import {
   CopyPlus,
   Trash2,
   Globe,
-  Share2
+  Share2,
+  Lock,
+  Globe2
 } from 'lucide-react';
-import { Prompt, Category } from '../types';
+import { Prompt, Category, VaultSpace } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 
 interface PromptCardProps {
   prompt: Prompt;
   category?: Category;
   viewMode: 'grid' | 'list';
+  activeSpace?: VaultSpace;
   onCopy: (text: string, title: string) => void;
   onOpenDetail: (prompt: Prompt) => void;
   onEdit: (prompt: Prompt) => void;
@@ -33,6 +36,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   prompt,
   category,
   viewMode,
+  activeSpace = 'public',
   onCopy,
   onOpenDetail,
   onEdit,
@@ -47,6 +51,8 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   const variables = Array.from(
     new Set((prompt.content.match(/\{\{([a-zA-Z0-9_-]+)\}\}/g) || []).map((v) => v.replace(/[{}]/g, '')))
   );
+
+  const isPublicPrompt = prompt.isPublic !== false;
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -99,6 +105,25 @@ export const PromptCard: React.FC<PromptCardProps> = ({
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
                 {category?.name || 'General'}
               </span>
+
+              {isPublicPrompt ? (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-950/50 text-blue-300 border border-blue-800/40 inline-flex items-center gap-0.5">
+                  <Globe2 className="w-2.5 h-2.5" />
+                  <span>Public</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-950/50 text-amber-300 border border-amber-800/40 inline-flex items-center gap-0.5">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>Personal</span>
+                </span>
+              )}
+
+              {prompt.authorName && (
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  by {prompt.authorName}
+                </span>
+              )}
+
               {variables.length > 0 && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
                   {variables.length} vars
@@ -146,7 +171,15 @@ export const PromptCard: React.FC<PromptCardProps> = ({
                 ? 'text-red-400 bg-red-950/40'
                 : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
             }`}
-            title={prompt.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
+            title={
+              activeSpace === 'public'
+                ? prompt.isFavorite
+                  ? 'Saved in Personal Space'
+                  : 'Like & Save to Personal Space'
+                : prompt.isFavorite
+                ? 'Remove Favorite'
+                : 'Add to Favorites'
+            }
           >
             <Heart className={`w-4 h-4 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
           </button>
@@ -222,7 +255,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({
       className="group relative flex flex-col justify-between p-3.5 sm:p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer"
     >
       <div>
-        {/* Top bar: Category + Actions (Favorite, Edit, Duplicate, Delete) */}
+        {/* Top bar: Category, Visibility badge, Actions */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5 overflow-hidden">
             <div className={`p-1 rounded ${categoryColor} text-white shrink-0`}>
@@ -231,9 +264,21 @@ export const PromptCard: React.FC<PromptCardProps> = ({
             <span className="text-xs font-medium text-zinc-300 truncate">
               {category?.name || 'General'}
             </span>
+
+            {isPublicPrompt ? (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-950/50 text-blue-300 border border-blue-800/40 inline-flex items-center gap-0.5 shrink-0">
+                <Globe2 className="w-2.5 h-2.5" />
+                <span>Public</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-950/50 text-amber-300 border border-amber-800/40 inline-flex items-center gap-0.5 shrink-0">
+                <Lock className="w-2.5 h-2.5" />
+                <span>Personal</span>
+              </span>
+            )}
           </div>
 
-          {/* Direct Actions (kept outside, no 3-dot dropdown) */}
+          {/* Direct Actions */}
           <div className="flex items-center gap-0.5 shrink-0">
             <button
               onClick={(e) => {
@@ -245,7 +290,15 @@ export const PromptCard: React.FC<PromptCardProps> = ({
                   ? 'text-red-400 bg-red-950/40'
                   : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
-              title={prompt.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
+              title={
+                activeSpace === 'public'
+                  ? prompt.isFavorite
+                    ? 'Saved in Personal Space'
+                    : 'Like & Save to Personal Space'
+                  : prompt.isFavorite
+                  ? 'Remove Favorite'
+                  : 'Add to Favorites'
+              }
             >
               <Heart className={`w-3.5 h-3.5 ${prompt.isFavorite ? 'fill-red-400' : ''}`} />
             </button>
@@ -330,14 +383,19 @@ export const PromptCard: React.FC<PromptCardProps> = ({
           </div>
         )}
 
-        {/* Variables badge */}
-        {variables.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1 mb-2.5">
+        {/* Badges bar */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+          {prompt.authorName && (
+            <span className="text-[10px] text-zinc-500 font-mono">
+              by {prompt.authorName}
+            </span>
+          )}
+          {variables.length > 0 && (
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
               {variables.length} vars
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Card Footer */}

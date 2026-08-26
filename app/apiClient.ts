@@ -1,4 +1,4 @@
-import { Category, Prompt, QuickToolLink } from './types';
+import { Category, Prompt, QuickToolLink, VaultSpace } from './types';
 
 export interface DBStatus {
   connected: boolean;
@@ -22,9 +22,9 @@ export async function checkDBStatus(): Promise<DBStatus> {
 }
 
 // Prompts API
-export async function apiFetchPrompts(): Promise<Prompt[] | null> {
+export async function apiFetchPrompts(scope: VaultSpace = 'public'): Promise<Prompt[] | null> {
   try {
-    const res = await fetch('/api/prompts', { cache: 'no-store' });
+    const res = await fetch(`/api/prompts?scope=${scope}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -45,6 +45,32 @@ export async function apiSavePrompt(prompt: Prompt): Promise<boolean> {
   }
 }
 
+export async function apiCreatePrompt(prompt: Partial<Prompt>): Promise<Prompt | null> {
+  try {
+    const res = await fetch('/api/prompts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prompt),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function apiToggleLikePrompt(id: string): Promise<{ success: boolean; isFavorite: boolean; likesCount?: number } | null> {
+  try {
+    const res = await fetch(`/api/prompts/${id}/like`, {
+      method: 'POST',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function apiDeletePrompt(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/prompts/${id}`, { method: 'DELETE' });
@@ -55,9 +81,9 @@ export async function apiDeletePrompt(id: string): Promise<boolean> {
 }
 
 // Categories API
-export async function apiFetchCategories(): Promise<Category[] | null> {
+export async function apiFetchCategories(scope: VaultSpace = 'public'): Promise<Category[] | null> {
   try {
-    const res = await fetch('/api/categories', { cache: 'no-store' });
+    const res = await fetch(`/api/categories?scope=${scope}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -88,9 +114,9 @@ export async function apiDeleteCategory(id: string): Promise<boolean> {
 }
 
 // Quick Links API
-export async function apiFetchQuickLinks(): Promise<QuickToolLink[] | null> {
+export async function apiFetchQuickLinks(scope: VaultSpace = 'public'): Promise<QuickToolLink[] | null> {
   try {
-    const res = await fetch('/api/quick-links', { cache: 'no-store' });
+    const res = await fetch(`/api/quick-links?scope=${scope}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return await res.json();
   } catch {

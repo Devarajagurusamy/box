@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Globe } from 'lucide-react';
-import { QuickToolLink } from '../types';
+import { X, Globe, Globe2, Lock } from 'lucide-react';
+import { QuickToolLink, VaultSpace } from '../types';
 
 interface QuickLinkModalProps {
   isOpen: boolean;
   linkToEdit: QuickToolLink | null;
+  activeSpace?: VaultSpace;
+  isSignedIn?: boolean;
   onClose: () => void;
   onSave: (link: QuickToolLink) => void;
 }
@@ -14,23 +16,28 @@ interface QuickLinkModalProps {
 export const QuickLinkModal: React.FC<QuickLinkModalProps> = ({
   isOpen,
   linkToEdit,
+  activeSpace = 'public',
+  isSignedIn = false,
   onClose,
   onSave,
 }) => {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (linkToEdit) {
       setName(linkToEdit.name);
       setUrl(linkToEdit.url);
+      setIsPublic(linkToEdit.isPublic !== false);
     } else {
       setName('');
       setUrl('');
+      setIsPublic(activeSpace === 'public');
     }
     setError('');
-  }, [linkToEdit, isOpen]);
+  }, [linkToEdit, isOpen, activeSpace]);
 
   if (!isOpen) return null;
 
@@ -57,6 +64,8 @@ export const QuickLinkModal: React.FC<QuickLinkModalProps> = ({
       iconName: 'Globe',
       category: 'General',
       description: '',
+      isPublic,
+      authorName: 'Community',
     };
 
     onSave(savedLink);
@@ -64,7 +73,7 @@ export const QuickLinkModal: React.FC<QuickLinkModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden text-zinc-100 p-5 sm:p-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -72,9 +81,14 @@ export const QuickLinkModal: React.FC<QuickLinkModalProps> = ({
             <div className="p-2 rounded-lg bg-zinc-800 text-zinc-200">
               <Globe className="w-4 h-4" />
             </div>
-            <h3 className="text-sm sm:text-base font-semibold text-white">
-              {linkToEdit ? 'Edit Web Link' : 'Add Web Link'}
-            </h3>
+            <div>
+              <h3 className="text-sm sm:text-base font-semibold text-white">
+                {linkToEdit ? 'Edit Web Link' : 'Add Web Link'}
+              </h3>
+              <p className="text-[11px] text-zinc-400">
+                {isPublic ? 'Publicly accessible link' : 'Private link in Personal Space'}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -92,16 +106,50 @@ export const QuickLinkModal: React.FC<QuickLinkModalProps> = ({
             </div>
           )}
 
+          {/* Visibility toggle */}
+          <div className="space-y-1">
+            <label className="block text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+              Destination
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsPublic(true)}
+                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition ${
+                  isPublic
+                    ? 'bg-blue-950/40 border-blue-600 text-blue-200 shadow-xs'
+                    : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Globe2 className="w-3.5 h-3.5 text-blue-400" />
+                <span>Public Vault</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsPublic(false)}
+                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition ${
+                  !isPublic
+                    ? 'bg-amber-950/40 border-amber-600 text-amber-200 shadow-xs'
+                    : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Personal Space</span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-zinc-300 uppercase tracking-wider mb-1">
-              Link Name
+              Link Name <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. ChatGPT, Perplexity, Docs"
+              placeholder="e.g. ChatGPT, Perplexity, Cursor Docs"
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-xs focus:outline-none focus:border-zinc-400"
               autoFocus
             />
@@ -109,7 +157,7 @@ export const QuickLinkModal: React.FC<QuickLinkModalProps> = ({
 
           <div>
             <label className="block text-xs font-medium text-zinc-300 uppercase tracking-wider mb-1">
-              URL
+              URL <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -133,7 +181,7 @@ export const QuickLinkModal: React.FC<QuickLinkModalProps> = ({
               type="submit"
               className="px-4 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition"
             >
-              {linkToEdit ? 'Save Link' : 'Add Link'}
+              {linkToEdit ? 'Save Link' : isPublic ? 'Add Public Link' : 'Add to Personal Space'}
             </button>
           </div>
         </form>

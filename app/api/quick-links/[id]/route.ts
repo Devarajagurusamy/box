@@ -7,13 +7,31 @@ interface Context {
   params: Promise<{ id: string }>;
 }
 
-export async function DELETE(_req: NextRequest, { params }: Context) {
+export async function PUT(req: NextRequest, { params }: Context) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    const mongoose = await connectToDatabase();
+    if (!mongoose) {
+      return NextResponse.json({ error: 'Database connection unavailable' }, { status: 503 });
     }
 
+    const { id } = await params;
+    const body = await req.json();
+
+    const updated = await QuickLinkModel.findOneAndUpdate(
+      { id },
+      { $set: body },
+      { new: true, upsert: true }
+    );
+
+    return NextResponse.json(updated);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: Context) {
+  try {
     const mongoose = await connectToDatabase();
     if (!mongoose) {
       return NextResponse.json({ error: 'Database connection unavailable' }, { status: 503 });

@@ -12,9 +12,13 @@ import {
   Box,
   X,
   MessageSquare,
-  Share2
+  Share2,
+  Lock,
+  Globe2,
+  Sparkles,
+  User
 } from 'lucide-react';
-import { Category, QuickToolLink } from '../types';
+import { Category, QuickToolLink, VaultSpace } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 import { DBStatus } from '../apiClient';
 
@@ -50,6 +54,8 @@ const LinkedinIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => 
 );
 
 interface SidebarProps {
+  activeSpace: VaultSpace;
+  onChangeSpace: (space: VaultSpace) => void;
   categories: Category[];
   quickLinks: QuickToolLink[];
   selectedCategory: string | null;
@@ -74,6 +80,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
+  activeSpace,
+  onChangeSpace,
   categories,
   quickLinks,
   selectedCategory,
@@ -138,7 +146,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Scrollable Navigation */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-5 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
+          {/* Space Switcher (Public vs Personal) */}
+          <div className="p-1 rounded-xl bg-zinc-900 border border-zinc-800 grid grid-cols-2 gap-1">
+            <button
+              onClick={() => {
+                handleNavClick(() => {
+                  onChangeSpace('public');
+                  onSelectCategory(null);
+                });
+              }}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+                activeSpace === 'public'
+                  ? 'bg-zinc-800 text-white shadow-xs'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Public Community Vault (No login required)"
+            >
+              <Globe2 className="w-3.5 h-3.5 text-blue-400" />
+              <span>Public</span>
+            </button>
+
+            <button
+              onClick={() => {
+                handleNavClick(() => {
+                  onChangeSpace('personal');
+                  onSelectCategory(null);
+                });
+              }}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+                activeSpace === 'personal'
+                  ? 'bg-zinc-800 text-white shadow-xs'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Personal Space (Requires Login)"
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>Personal</span>
+            </button>
+          </div>
+
           {/* Main Navigation Views */}
           <div className="space-y-1">
             <button
@@ -156,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <LayoutGrid className="w-4 h-4" />
-                <span>All Prompts</span>
+                <span>{activeSpace === 'personal' ? 'My Prompts' : 'All Prompts'}</span>
               </div>
               <span className="text-[11px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 font-mono">
                 {totalPromptsCount}

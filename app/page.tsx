@@ -8,14 +8,19 @@ import {
   X,
   LayoutGrid,
   List,
-  FolderPlus
+  FolderPlus,
+  Globe2,
+  Lock,
+  Sparkles,
+  LogIn
 } from 'lucide-react';
-import { useUser, useClerk } from '@clerk/nextjs';
+import { useUser, useClerk, SignInButton } from '@clerk/nextjs';
 import {
   Prompt,
   Category,
   QuickToolLink,
-  ToastMessage
+  ToastMessage,
+  VaultSpace
 } from './types';
 import {
   getStoredPrompts,
@@ -33,7 +38,9 @@ import {
   DBStatus,
   apiFetchPrompts,
   apiSavePrompt,
+  apiCreatePrompt,
   apiDeletePrompt,
+  apiToggleLikePrompt,
   apiFetchCategories,
   apiSaveCategory,
   apiDeleteCategory,
@@ -57,9 +64,10 @@ import { ToastContainer } from './components/Toast';
 import { CategoryIcon } from './components/CategoryIcon';
 
 export default function Home() {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
   const { openSignIn } = useClerk();
 
+  const [activeSpace, setActiveSpace] = useState<VaultSpace>('public');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [quickLinks, setQuickLinks] = useState<QuickToolLink[]>([]);
@@ -129,74 +137,79 @@ export default function Home() {
     [isSignedIn, openSignIn, addToast]
   );
 
-  useEffect(() => {
-    async function initData() {
-      const localCats = getStoredCategories();
-      const localPrompts = getStoredPrompts();
-      const localLinks = getStoredQuickLinks();
-
-      setCategories(localCats);
-      setPrompts(localPrompts);
-      setQuickLinks(localLinks);
-      setIsLoaded(true);
-
+  // Load data according to activeSpace & auth status
+  const loadDataForSpace = useCallback(
+    async (space: VaultSpace) => {
       try {
         const status = await checkDBStatus();
         setDbStatus(status);
 
         if (status.connected) {
           const [remotePrompts, remoteCats, remoteLinks] = await Promise.all([
-            apiFetchPrompts(),
-            apiFetchCategories(),
-            apiFetchQuickLinks(),
+            apiFetchPrompts(space),
+            apiFetchCategories(space),
+            apiFetchQuickLinks(space),
           ]);
 
           if (remoteCats) {
             setCategories(remoteCats);
-            saveStoredCategories(remoteCats);
+            if (space === 'public') saveStoredCategories(remoteCats);
           }
           if (remotePrompts) {
             setPrompts(remotePrompts);
-            saveStoredPrompts(remotePrompts);
+            if (space === 'public') saveStoredPrompts(remotePrompts);
           }
           if (remoteLinks) {
             setQuickLinks(remoteLinks);
-            saveStoredQuickLinks(remoteLinks);
+            if (space === 'public') saveStoredQuickLinks(remoteLinks);
           }
+        } else {
+          // Fallback to local storage
+          setCategories(getStoredCategories());
+          setPrompts(getStoredPrompts());
+          setQuickLinks(getStoredQuickLinks());
         }
       } catch {
-        // Fallback
+        setCategories(getStoredCategories());
+        setPrompts(getStoredPrompts());
+        setQuickLinks(getStoredQuickLinks());
+      } finally {
+        setIsLoaded(true);
       }
+    },
+    []
+  );
+
+  useEffect(() => {
+    loadDataForSpace(activeSpace);
+  }, [activeSpace, isSignedIn, loadDataForSpace]);
+
+  // Space switcher handler
+  const handleChangeSpace = (newSpace: VaultSpace) => {
+    if (newSpace === 'personal' && !isSignedIn) {
+      addToast('Sign In Required', 'Please sign in to access your Personal Space.', 'info');
+      openSignIn();
+      return;
     }
+    setActiveSpace(newSpace);
+    setSelectedCategory(null);
+    setOnlyFavorites(false);
+  };
 
-    initData();
-  }, []);
-
+  // Keyboard shortcut (N for new prompt)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        isPromptModalOpen ||
-        isDetailModalOpen ||
-        isCategoryModalOpen ||
-        isQuickLinkModalOpen ||
-        deleteModal.isOpen
+        target.isContentEditable
       ) {
         return;
       }
 
-      if (e.key === '/') {
+      if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
-        const searchInput = document.querySelector('input[placeholder*="Search prompts"]') as HTMLInputElement;
-        if (searchInput) {
-          searchInput.focus();
-        }
-      } else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        if (!requireAuth('create a prompt')) return;
         setPromptToEdit(null);
         setIsPromptModalOpen(true);
       }
@@ -204,17 +217,15 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    isPromptModalOpen,
-    isDetailModalOpen,
-    isCategoryModalOpen,
-    isQuickLinkModalOpen,
-    deleteModal.isOpen,
-    requireAuth,
-  ]);
+  }, []);
 
+  // Save prompt (Public: no auth needed, Personal: auth needed)
   const handleSavePrompt = async (savedPrompt: Prompt) => {
-    if (!requireAuth('save prompts')) return;
+    const isSavingAsPublic = savedPrompt.isPublic !== false;
+
+    if (!isSavingAsPublic && !isSignedIn) {
+      if (!requireAuth('save prompts to Personal Space')) return;
+    }
 
     let updatedPrompts: Prompt[];
     const exists = prompts.some((p) => p.id === savedPrompt.id);
@@ -222,16 +233,23 @@ export default function Home() {
     if (exists) {
       updatedPrompts = prompts.map((p) => (p.id === savedPrompt.id ? savedPrompt : p));
       addToast('Prompt Updated', `Saved "${savedPrompt.title}".`);
+      if (dbStatus?.connected) {
+        apiSavePrompt(savedPrompt);
+      }
     } else {
       updatedPrompts = [savedPrompt, ...prompts];
-      addToast('Prompt Created', `Added "${savedPrompt.title}".`);
+      addToast(
+        isSavingAsPublic ? 'Public Prompt Published' : 'Saved to Personal Space',
+        `"${savedPrompt.title}" has been added to ${isSavingAsPublic ? 'the Public Vault' : 'your Personal Space'}.`
+      );
+      if (dbStatus?.connected) {
+        apiCreatePrompt(savedPrompt);
+      }
     }
 
     setPrompts(updatedPrompts);
-    saveStoredPrompts(updatedPrompts);
-
-    if (dbStatus?.connected) {
-      apiSavePrompt(savedPrompt);
+    if (activeSpace === 'public') {
+      saveStoredPrompts(updatedPrompts);
     }
 
     if (promptToView && promptToView.id === savedPrompt.id) {
@@ -240,7 +258,7 @@ export default function Home() {
   };
 
   const handleDeletePrompt = (prompt: Prompt) => {
-    if (!requireAuth('delete prompts')) return;
+    if (prompt.isPublic === false && !requireAuth('delete personal prompts')) return;
 
     setDeleteModal({
       isOpen: true,
@@ -249,7 +267,9 @@ export default function Home() {
       onConfirm: async () => {
         const updated = prompts.filter((p) => p.id !== prompt.id);
         setPrompts(updated);
-        saveStoredPrompts(updated);
+        if (activeSpace === 'public') {
+          saveStoredPrompts(updated);
+        }
 
         if (dbStatus?.connected) {
           apiDeletePrompt(prompt.id);
@@ -265,49 +285,75 @@ export default function Home() {
   };
 
   const handleDuplicatePrompt = async (prompt: Prompt) => {
-    if (!requireAuth('duplicate prompts')) return;
-
     const duplicated: Prompt = {
       ...prompt,
       id: `prompt-${Date.now()}`,
       title: `${prompt.title} (Copy)`,
       copyCount: 0,
       isFavorite: false,
+      isPublic: activeSpace === 'public',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     const updated = [duplicated, ...prompts];
     setPrompts(updated);
-    saveStoredPrompts(updated);
-
-    if (dbStatus?.connected) {
-      apiSavePrompt(duplicated);
+    if (activeSpace === 'public') {
+      saveStoredPrompts(updated);
     }
 
-    addToast('Prompt Duplicated', `Created copy.`);
+    if (dbStatus?.connected) {
+      apiCreatePrompt(duplicated);
+    }
+
+    addToast('Prompt Duplicated', `Created copy in ${activeSpace === 'public' ? 'Public Vault' : 'Personal Space'}.`);
   };
 
+  // Like & Auto-Save to Personal Space
   const handleToggleFavorite = async (id: string) => {
-    if (!requireAuth('favorite prompts')) return;
+    const targetPrompt = prompts.find((p) => p.id === id);
+
+    if (!isSignedIn) {
+      addToast(
+        'Sign In Required',
+        'Sign in to save this prompt to your personal space.',
+        'info'
+      );
+      openSignIn();
+      return;
+    }
+
+    // Call API toggle
+    if (dbStatus?.connected) {
+      apiToggleLikePrompt(id);
+    }
 
     const updated = prompts.map((p) => {
       if (p.id === id) {
         const nextFav = !p.isFavorite;
         const updatedItem = { ...p, isFavorite: nextFav };
-        if (dbStatus?.connected) {
-          apiSavePrompt(updatedItem);
+
+        if (nextFav) {
+          addToast(
+            'Saved to Personal Space!',
+            `"${p.title}" is now available in your Personal Space.`,
+            'success'
+          );
+        } else {
+          addToast(
+            'Removed from Favorites',
+            `"${p.title}"`,
+            'info'
+          );
         }
-        addToast(
-          nextFav ? 'Added to Favorites' : 'Removed from Favorites',
-          `"${p.title}"`,
-          'info'
-        );
         return updatedItem;
       }
       return p;
     });
+
     setPrompts(updated);
-    saveStoredPrompts(updated);
+    if (activeSpace === 'public') {
+      saveStoredPrompts(updated);
+    }
 
     if (promptToView && promptToView.id === id) {
       setPromptToView({ ...promptToView, isFavorite: !promptToView.isFavorite });
@@ -328,7 +374,9 @@ export default function Home() {
         return p;
       });
       setPrompts(updated);
-      saveStoredPrompts(updated);
+      if (activeSpace === 'public') {
+        saveStoredPrompts(updated);
+      }
       addToast('Copied to Clipboard', '', 'success');
     } catch {
       addToast('Copy Failed', '', 'error');
@@ -366,7 +414,7 @@ export default function Home() {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
     const shareData = {
       title: 'BOX — Prompt Library & Web Resource Vault',
-      text: 'Organize and playground your AI prompts with BOX — Prompt Library & Web Resource Vault created by DEVARAJA S G.',
+      text: 'Organize and playground your AI prompts with BOX — created by DEVARAJA S G.',
       url: shareUrl,
     };
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -392,8 +440,6 @@ export default function Home() {
   };
 
   const handleSaveCategory = async (savedCategory: Category) => {
-    if (!requireAuth('save categories')) return;
-
     let updatedCategories: Category[];
     const exists = categories.some((c) => c.id === savedCategory.id);
 
@@ -456,107 +502,103 @@ export default function Home() {
         if (selectedCategory === category.id) {
           setSelectedCategory(null);
         }
+
         addToast('Category Deleted', '', 'info');
       },
     });
   };
 
   const handleSaveQuickLink = async (savedLink: QuickToolLink) => {
-    if (!requireAuth('save links')) return;
-
-    let updated: QuickToolLink[];
+    let updatedLinks: QuickToolLink[];
     const exists = quickLinks.some((l) => l.id === savedLink.id);
+
     if (exists) {
-      updated = quickLinks.map((l) => (l.id === savedLink.id ? savedLink : l));
-      addToast('Link Saved', `"${savedLink.name}".`);
+      updatedLinks = quickLinks.map((l) => (l.id === savedLink.id ? savedLink : l));
+      addToast('Link Updated', `"${savedLink.name}".`);
     } else {
-      updated = [...quickLinks, savedLink];
+      updatedLinks = [...quickLinks, savedLink];
       addToast('Link Added', `"${savedLink.name}".`);
     }
-    setQuickLinks(updated);
-    saveStoredQuickLinks(updated);
+
+    setQuickLinks(updatedLinks);
+    saveStoredQuickLinks(updatedLinks);
 
     if (dbStatus?.connected) {
       apiSaveQuickLink(savedLink);
     }
   };
 
-  const handleDeleteQuickLink = async (id: string) => {
-    if (!requireAuth('delete links')) return;
+  const handleDeleteQuickLink = (id: string) => {
+    const link = quickLinks.find((l) => l.id === id);
+    setDeleteModal({
+      isOpen: true,
+      title: 'Delete Link',
+      message: `Delete link "${link?.name || id}"?`,
+      onConfirm: async () => {
+        const updated = quickLinks.filter((l) => l.id !== id);
+        setQuickLinks(updated);
+        saveStoredQuickLinks(updated);
 
-    const updated = quickLinks.filter((l) => l.id !== id);
-    setQuickLinks(updated);
-    saveStoredQuickLinks(updated);
+        if (dbStatus?.connected) {
+          apiDeleteQuickLink(id);
+        }
 
-    if (dbStatus?.connected) {
-      apiDeleteQuickLink(id);
-    }
-
-    addToast('Link Removed', '', 'info');
+        addToast('Link Deleted', '', 'info');
+      },
+    });
   };
 
   const handleExportVault = () => {
-    const jsonStr = exportVaultJSON();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `box-prompt-vault-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    addToast('Vault Exported', '', 'success');
+    try {
+      const jsonString = exportVaultJSON();
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `box-vault-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      addToast('Vault Exported', 'Saved local JSON file.', 'success');
+    } catch {
+      addToast('Export Failed', 'Unable to export vault.', 'error');
+    }
   };
 
-  const handleImportFile = async (file: File) => {
-    if (!requireAuth('import data')) return;
-
+  const handleImportFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       const content = e.target?.result as string;
-      const result = importVaultJSON(content);
-      if (result.success) {
-        const cats = getStoredCategories();
-        const pList = getStoredPrompts();
-        const qLinks = getStoredQuickLinks();
+      if (!content) return;
 
-        setCategories(cats);
-        setPrompts(pList);
-        setQuickLinks(qLinks);
-
-        if (dbStatus?.connected) {
-          cats.forEach((c) => apiSaveCategory(c));
-          pList.forEach((p) => apiSavePrompt(p));
-          qLinks.forEach((l) => apiSaveQuickLink(l));
-        }
-
-        addToast('Import Successful', result.message, 'success');
+      const res = importVaultJSON(content);
+      if (res.success) {
+        setCategories(getStoredCategories());
+        setPrompts(getStoredPrompts());
+        setQuickLinks(getStoredQuickLinks());
+        addToast('Import Successful', res.message, 'success');
       } else {
-        addToast('Import Failed', result.message, 'error');
+        addToast('Import Error', res.message, 'error');
       }
     };
     reader.readAsText(file);
   };
 
   const handleClearVault = () => {
-    if (!requireAuth('clear vault')) return;
-
     setDeleteModal({
       isOpen: true,
-      title: 'Clear Vault',
-      message: 'Clear all prompts, categories, and links?',
+      title: 'Reset Vault Data',
+      message: 'This will reset all your prompts and categories. Are you sure?',
       onConfirm: async () => {
         clearVaultData();
         setPrompts([]);
         setCategories([]);
         setQuickLinks([]);
-
         if (dbStatus?.connected) {
-          apiClearDatabase();
+          await apiClearDatabase();
         }
-
-        addToast('Vault Cleared', 'All data removed.', 'info');
+        addToast('Vault Reset', 'All prompts cleared.', 'info');
       },
     });
   };
@@ -571,23 +613,20 @@ export default function Home() {
 
   const filteredPrompts = useMemo(() => {
     return prompts
-      .filter((prompt) => {
-        if (selectedCategory && prompt.categoryId !== selectedCategory) {
-          return false;
-        }
-        if (onlyFavorites && !prompt.isFavorite) {
-          return false;
-        }
+      .filter((p) => {
+        if (selectedCategory && p.categoryId !== selectedCategory) return false;
+        if (onlyFavorites && !p.isFavorite) return false;
         if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase().trim();
-          const matchTitle = prompt.title.toLowerCase().includes(q);
-          const matchDesc = prompt.description?.toLowerCase().includes(q) || false;
-          const matchContent = prompt.content.toLowerCase().includes(q);
-          const matchTags = prompt.tags?.some((t) => t.toLowerCase().includes(q)) || false;
-          const matchCategory =
-            categories.find((c) => c.id === prompt.categoryId)?.name.toLowerCase().includes(q) ||
-            false;
-          return matchTitle || matchDesc || matchContent || matchTags || matchCategory;
+          const q = searchQuery.toLowerCase();
+          const matchTitle = p.title.toLowerCase().includes(q);
+          const matchDesc = (p.description || '').toLowerCase().includes(q);
+          const matchContent = p.content.toLowerCase().includes(q);
+          const matchTag = p.tags?.some((t) => t.toLowerCase().includes(q));
+          const matchCat = categories
+            .find((c) => c.id === p.categoryId)
+            ?.name.toLowerCase()
+            .includes(q);
+          return matchTitle || matchDesc || matchContent || matchTag || matchCat;
         }
         return true;
       })
@@ -634,7 +673,7 @@ export default function Home() {
   if (!isLoaded) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 text-white font-mono text-xs">
-        Loading...
+        Loading BOX Vault...
       </div>
     );
   }
@@ -642,6 +681,8 @@ export default function Home() {
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-100 font-sans">
       <Sidebar
+        activeSpace={activeSpace}
+        onChangeSpace={handleChangeSpace}
         categories={categories}
         quickLinks={quickLinks}
         selectedCategory={selectedCategory}
@@ -653,23 +694,19 @@ export default function Home() {
         onSelectCategory={(id) => setSelectedCategory(id)}
         onToggleOnlyFavorites={() => setOnlyFavorites(!onlyFavorites)}
         onOpenCreateCategory={() => {
-          if (!requireAuth('create a category')) return;
           setCategoryToEdit(null);
           setIsCategoryModalOpen(true);
         }}
         onOpenEditCategory={(cat) => {
-          if (!requireAuth('edit this category')) return;
           setCategoryToEdit(cat);
           setIsCategoryModalOpen(true);
         }}
         onDeleteCategory={handleDeleteCategory}
         onOpenAddQuickLink={() => {
-          if (!requireAuth('add a link')) return;
           setQuickLinkToEdit(null);
           setIsQuickLinkModalOpen(true);
         }}
         onOpenEditQuickLink={(link) => {
-          if (!requireAuth('edit this link')) return;
           setQuickLinkToEdit(link);
           setIsQuickLinkModalOpen(true);
         }}
@@ -685,12 +722,13 @@ export default function Home() {
         <Navbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          activeSpace={activeSpace}
+          onChangeSpace={handleChangeSpace}
           viewMode={viewMode}
           onToggleViewMode={setViewMode}
           sortBy={sortBy}
           onChangeSortBy={setSortBy}
           onOpenCreatePrompt={() => {
-            if (!requireAuth('create a prompt')) return;
             setPromptToEdit(null);
             setIsPromptModalOpen(true);
           }}
@@ -703,6 +741,50 @@ export default function Home() {
         />
 
         <main className="flex-1 p-4 lg:p-6 max-w-7xl w-full mx-auto space-y-4">
+          {/* Space Banner Info */}
+          <div className="p-3 sm:p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${activeSpace === 'public' ? 'bg-blue-950/60 text-blue-400 border border-blue-800/60' : 'bg-amber-950/60 text-amber-400 border border-amber-800/60'}`}>
+                {activeSpace === 'public' ? <Globe2 className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-bold text-white">
+                    {activeSpace === 'public' ? 'Public Community Vault' : 'Personal Space'}
+                  </h2>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${activeSpace === 'public' ? 'bg-blue-950 text-blue-300 border-blue-800' : 'bg-amber-950 text-amber-300 border-amber-800'}`}>
+                    {activeSpace === 'public' ? 'Open to All • No Login' : 'Private • Authenticated'}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  {activeSpace === 'public'
+                    ? 'Explore, test variables, copy, and publish public prompts and links freely without signing in.'
+                    : 'Your private workspace storing your own prompts, links, and favorited community prompts.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              {activeSpace === 'public' ? (
+                <button
+                  onClick={() => handleChangeSpace('personal')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 transition"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Go to Personal Space</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleChangeSpace('public')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 transition"
+                >
+                  <Globe2 className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Go to Public Vault</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           <StatsBar
             totalPrompts={prompts.length}
             totalCategories={categories.length}
@@ -735,7 +817,9 @@ export default function Home() {
                   ? activeCategoryObj.name
                   : searchQuery
                   ? `Search: "${searchQuery}"`
-                  : 'All Prompts'}
+                  : activeSpace === 'personal'
+                  ? 'My Personal Prompts'
+                  : 'Public Community Prompts'}
                 <span className="text-xs font-mono font-normal text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
                   {filteredPrompts.length}
                 </span>
@@ -799,7 +883,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Cards */}
+          {/* Cards Grid / List */}
           {filteredPrompts.length > 0 ? (
             <div
               className={
@@ -816,13 +900,13 @@ export default function Home() {
                     prompt={prompt}
                     category={category}
                     viewMode={viewMode}
+                    activeSpace={activeSpace}
                     onCopy={handleCopyPrompt}
                     onOpenDetail={(p) => {
                       setPromptToView(p);
                       setIsDetailModalOpen(true);
                     }}
                     onEdit={(p) => {
-                      if (!requireAuth('edit this prompt')) return;
                       setPromptToEdit(p);
                       setIsPromptModalOpen(true);
                     }}
@@ -838,9 +922,18 @@ export default function Home() {
             /* Clean Empty State */
             <div className="flex flex-col items-center justify-center p-12 text-center bg-zinc-900/60 border border-zinc-800/80 rounded-xl space-y-3">
               <div className="p-2.5 rounded-lg bg-zinc-800/80 text-zinc-400">
-                <Search className="w-5 h-5" />
+                {activeSpace === 'public' ? <Globe2 className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
               </div>
-              <h3 className="text-sm font-semibold text-white">No Prompts in Vault</h3>
+              <h3 className="text-sm font-semibold text-white">
+                {activeSpace === 'personal'
+                  ? 'No Personal Prompts Yet'
+                  : 'No Public Prompts in Vault'}
+              </h3>
+              <p className="text-xs text-zinc-400 max-w-sm">
+                {activeSpace === 'personal'
+                  ? 'Create private prompts or click the heart icon on any public prompt to save it to your personal space.'
+                  : 'Be the first to publish a public prompt to the community library! No login required.'}
+              </p>
 
               <div className="flex items-center gap-2 pt-1">
                 {hasActiveFilters && (
@@ -848,37 +941,22 @@ export default function Home() {
                     onClick={clearAllFilters}
                     className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
                   >
-                    Reset
-                  </button>
-                )}
-                {categories.length === 0 && (
-                  <button
-                    onClick={() => {
-                      if (!requireAuth('create a category')) return;
-                      setCategoryToEdit(null);
-                      setIsCategoryModalOpen(true);
-                    }}
-                    className="px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition flex items-center gap-1"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5" />
-                    <span>Create Category</span>
+                    Reset Filters
                   </button>
                 )}
                 <button
                   onClick={() => {
-                    if (!requireAuth('create a prompt')) return;
                     setPromptToEdit(null);
                     setIsPromptModalOpen(true);
                   }}
-                  className="px-3.5 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition flex items-center gap-1"
+                  className="px-3.5 py-1.5 text-xs font-medium text-zinc-950 bg-zinc-100 hover:bg-white rounded-lg transition flex items-center gap-1 shadow-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Create Prompt</span>
+                  <span>{activeSpace === 'personal' ? 'Create Private Prompt' : 'Create Public Prompt'}</span>
                 </button>
               </div>
             </div>
           )}
-         
         </main>
       </div>
 
@@ -887,13 +965,14 @@ export default function Home() {
         promptToEdit={promptToEdit}
         categories={categories}
         initialCategoryId={selectedCategory}
+        activeSpace={activeSpace}
+        isSignedIn={Boolean(isSignedIn)}
         onClose={() => {
           setIsPromptModalOpen(false);
           setPromptToEdit(null);
         }}
         onSave={handleSavePrompt}
         onOpenCreateCategory={() => {
-          if (!requireAuth('create a category')) return;
           setCategoryToEdit(null);
           setIsCategoryModalOpen(true);
         }}
@@ -903,13 +982,13 @@ export default function Home() {
         isOpen={isDetailModalOpen}
         prompt={promptToView}
         category={categories.find((c) => c.id === promptToView?.categoryId)}
+        activeSpace={activeSpace}
         onClose={() => {
           setIsDetailModalOpen(false);
           setPromptToView(null);
         }}
         onCopy={handleCopyPrompt}
         onEdit={(p) => {
-          if (!requireAuth('edit this prompt')) return;
           setIsDetailModalOpen(false);
           setPromptToEdit(p);
           setIsPromptModalOpen(true);
@@ -931,6 +1010,8 @@ export default function Home() {
       <QuickLinkModal
         isOpen={isQuickLinkModalOpen}
         linkToEdit={quickLinkToEdit}
+        activeSpace={activeSpace}
+        isSignedIn={Boolean(isSignedIn)}
         onClose={() => {
           setIsQuickLinkModalOpen(false);
           setQuickLinkToEdit(null);

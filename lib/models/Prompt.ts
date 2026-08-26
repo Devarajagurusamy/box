@@ -14,6 +14,11 @@ export interface IPrompt {
   copyCount: number;
   createdAt: string;
   updatedAt: string;
+  userId?: string | null;
+  isPublic: boolean;
+  authorName: string;
+  likedBy: string[];
+  originalPromptId?: string;
 }
 
 const PromptLinkSchema = new Schema<PromptLink>(
@@ -42,6 +47,11 @@ const PromptSchema = new Schema<IPrompt>(
     copyCount: { type: Number, default: 0 },
     createdAt: { type: String, default: () => new Date().toISOString() },
     updatedAt: { type: String, default: () => new Date().toISOString() },
+    userId: { type: String, default: null, index: true },
+    isPublic: { type: Boolean, default: true, index: true },
+    authorName: { type: String, default: 'Community' },
+    likedBy: { type: [String], default: [] },
+    originalPromptId: { type: String, default: null },
   },
   {
     timestamps: false,

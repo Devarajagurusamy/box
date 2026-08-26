@@ -6,6 +6,8 @@ export interface ICategory {
   icon: string;
   color: string;
   description: string;
+  userId?: string | null;
+  isPublic: boolean;
 }
 
 const CategorySchema = new Schema<ICategory>(
@@ -15,6 +17,8 @@ const CategorySchema = new Schema<ICategory>(
     icon: { type: String, default: 'Folder' },
     color: { type: String, default: 'bg-blue-600' },
     description: { type: String, default: '' },
+    userId: { type: String, default: null, index: true },
+    isPublic: { type: Boolean, default: true },
   },
   {
     toJSON: {

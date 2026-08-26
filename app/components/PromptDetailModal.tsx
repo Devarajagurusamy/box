@@ -81,18 +81,22 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
       onShare(prompt, interpolatedContent);
       return;
     }
-    const shareText = `${prompt.title}\n\n${interpolatedContent}`;
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(prompt.id)}`
+        : '';
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator
         .share({
           title: prompt.title,
-          text: shareText,
+          url: shareUrl,
         })
         .catch(() => {});
-    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(shareText);
-      setShared(true);
-      setTimeout(() => setShared(false), 2000);
     }
   };
 

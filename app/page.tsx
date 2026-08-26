@@ -185,6 +185,21 @@ export default function Home() {
     loadDataForSpace(activeSpace);
   }, [activeSpace, isSignedIn, loadDataForSpace]);
 
+  // Deep-linking: Automatically open shared prompt if ?id= is in the URL
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isLoaded && prompts.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const promptId = params.get('id') || params.get('prompt');
+      if (promptId) {
+        const found = prompts.find((p) => p.id === promptId);
+        if (found) {
+          setPromptToView(found);
+          setIsDetailModalOpen(true);
+        }
+      }
+    }
+  }, [isLoaded, prompts]);
+
   // Space switcher handler
   const handleChangeSpace = (newSpace: VaultSpace) => {
     if (newSpace === 'personal' && !isSignedIn) {
@@ -428,58 +443,58 @@ export default function Home() {
   };
 
   const handleSharePrompt = async (prompt: Prompt, customContent?: string) => {
-    const textToShare = `${prompt.title}\n\n${customContent || prompt.content}`;
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: prompt.title,
-          text: textToShare,
-        });
-        addToast('Prompt Shared', `"${prompt.title}"`, 'success');
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          try {
-            await navigator.clipboard.writeText(textToShare);
-            addToast('Prompt Copied for Sharing', `"${prompt.title}"`, 'success');
-          } catch {}
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(prompt.id)}`
+        : '';
+    const textToShare = `${prompt.title}\n\n${customContent || prompt.content}\n\nLink: ${shareUrl}`;
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            title: prompt.title,
+            text: `${prompt.title} - ${prompt.description || 'AI Prompt on BOX'}`,
+            url: shareUrl,
+          });
+        } catch (err: any) {
+          // user cancelled native share
         }
       }
-    } else {
-      try {
-        await navigator.clipboard.writeText(textToShare);
-        addToast('Prompt Copied for Sharing', `"${prompt.title}" copied to clipboard.`, 'success');
-      } catch {
-        addToast('Share Failed', '', 'error');
-      }
+      addToast('Prompt Link Copied!', shareUrl, 'success');
+    } catch {
+      addToast('Copy Link Failed', '', 'error');
     }
   };
 
   const handleShareApp = async () => {
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}`
+        : '';
     const shareData = {
       title: 'BOX — Prompt Library & Web Resource Vault',
       text: 'Organize and playground your AI prompts with BOX — created by DEVARAJA S G.',
       url: shareUrl,
     };
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share(shareData);
-        addToast('App Shared', 'Thanks for sharing BOX!', 'success');
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          try {
-            await navigator.clipboard.writeText(shareUrl);
-            addToast('Vault Link Copied', 'App link copied to clipboard.', 'success');
-          } catch {}
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share(shareData);
+        } catch (err: any) {
+          // user cancelled native share
         }
       }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        addToast('Vault Link Copied', 'App link copied to clipboard.', 'success');
-      } catch {
-        addToast('Copy Failed', '', 'error');
-      }
+      addToast('Vault Link Copied!', shareUrl, 'success');
+    } catch {
+      addToast('Copy Link Failed', '', 'error');
     }
   };
 

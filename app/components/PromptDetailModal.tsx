@@ -9,7 +9,8 @@ import {
   ExternalLink,
   Sliders,
   Heart,
-  Edit3
+  Edit3,
+  Share2
 } from 'lucide-react';
 import { Prompt, Category } from '../types';
 import { CategoryIcon } from './CategoryIcon';
@@ -22,6 +23,7 @@ interface PromptDetailModalProps {
   onCopy: (text: string, title: string) => void;
   onEdit: (prompt: Prompt) => void;
   onToggleFavorite: (id: string) => void;
+  onShare?: (prompt: Prompt, content: string) => void;
 }
 
 export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
@@ -32,9 +34,11 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
   onCopy,
   onEdit,
   onToggleFavorite,
+  onShare,
 }) => {
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   const detectedVariables = Array.from(
     new Set((prompt?.content.match(/\{\{([a-zA-Z0-9_-]+)\}\}/g) || []).map((v) => v.replace(/[{}]/g, '')))
@@ -65,6 +69,26 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleShareClick = () => {
+    if (onShare) {
+      onShare(prompt, interpolatedContent);
+      return;
+    }
+    const shareText = `${prompt.title}\n\n${interpolatedContent}`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator
+        .share({
+          title: prompt.title,
+          text: shareText,
+        })
+        .catch(() => {});
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(shareText);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
+  };
+
   const handleLaunchWithCopy = (url: string) => {
     onCopy(interpolatedContent, prompt.title);
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -92,6 +116,13 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleShareClick}
+              className="p-1.5 bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 rounded-lg hover:bg-zinc-700 transition"
+              title="Share Prompt"
+            >
+              {shared ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+            </button>
             <button
               onClick={() => onToggleFavorite(prompt.id)}
               className={`p-1.5 rounded-lg border transition ${
@@ -235,6 +266,13 @@ export const PromptDetailModal: React.FC<PromptDetailModalProps> = ({
               className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
             >
               Close
+            </button>
+            <button
+              onClick={handleShareClick}
+              className="px-3 py-1.5 text-xs font-medium text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition flex items-center gap-1.5"
+            >
+              {shared ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+              <span>{shared ? 'Shared' : 'Share'}</span>
             </button>
             <button
               onClick={handleCopyClick}

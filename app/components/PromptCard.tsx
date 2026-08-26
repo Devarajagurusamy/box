@@ -10,7 +10,8 @@ import {
   Edit2,
   CopyPlus,
   Trash2,
-  Globe
+  Globe,
+  Share2
 } from 'lucide-react';
 import { Prompt, Category } from '../types';
 import { CategoryIcon } from './CategoryIcon';
@@ -25,6 +26,7 @@ interface PromptCardProps {
   onDuplicate: (prompt: Prompt) => void;
   onDelete: (prompt: Prompt) => void;
   onToggleFavorite: (id: string) => void;
+  onShare?: (prompt: Prompt) => void;
 }
 
 export const PromptCard: React.FC<PromptCardProps> = ({
@@ -37,8 +39,10 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   onDuplicate,
   onDelete,
   onToggleFavorite,
+  onShare,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   const variables = Array.from(
     new Set((prompt.content.match(/\{\{([a-zA-Z0-9_-]+)\}\}/g) || []).map((v) => v.replace(/[{}]/g, '')))
@@ -49,6 +53,27 @@ export const PromptCard: React.FC<PromptCardProps> = ({
     onCopy(prompt.content, prompt.title);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onShare) {
+      onShare(prompt);
+      return;
+    }
+    const shareText = `${prompt.title}\n\n${prompt.content}`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator
+        .share({
+          title: prompt.title,
+          text: shareText,
+        })
+        .catch(() => {});
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(shareText);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
   };
 
   const handleLaunchLink = (e: React.MouseEvent, url: string) => {
@@ -160,6 +185,14 @@ export const PromptCard: React.FC<PromptCardProps> = ({
           </button>
 
           <button
+            onClick={handleShare}
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition"
+            title="Share Prompt"
+          >
+            {shared ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+          </button>
+
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onOpenDetail(prompt);
@@ -249,6 +282,14 @@ export const PromptCard: React.FC<PromptCardProps> = ({
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
+
+            <button
+              onClick={handleShare}
+              className="p-1.5 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition"
+              title="Share Prompt"
+            >
+              {shared ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+            </button>
           </div>
         </div>
 
@@ -306,6 +347,14 @@ export const PromptCard: React.FC<PromptCardProps> = ({
         </span>
 
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleShare}
+            className="p-1.5 text-zinc-400 hover:text-white bg-zinc-800 rounded-lg transition"
+            title="Share Prompt"
+          >
+            {shared ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+          </button>
+
           <button
             onClick={(e) => {
               e.stopPropagation();

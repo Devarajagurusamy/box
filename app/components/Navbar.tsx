@@ -7,7 +7,9 @@ import {
   Menu,
   X,
   LogIn,
-  UserPlus
+  UserPlus,
+  MessageSquare,
+  Share2
 } from 'lucide-react';
 import {
   SignInButton,
@@ -28,6 +30,8 @@ interface NavbarProps {
   onImportFile?: (file: File) => void;
   onResetDemoData?: () => void;
   onToggleMobileSidebar: () => void;
+  onOpenFeedback?: () => void;
+  onShareApp?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,6 +39,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSearchChange,
   onOpenCreatePrompt,
   onToggleMobileSidebar,
+  onOpenFeedback,
+  onShareApp,
 }) => {
   return (
     <header className="sticky top-0 z-30 w-full bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2.5">
@@ -70,7 +76,29 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Right CTA + Auth Controls */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {onShareApp && (
+          <button
+            onClick={onShareApp}
+            className="p-2 sm:px-2.5 sm:py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-medium transition flex items-center gap-1.5"
+            title="Share Vault"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Share</span>
+          </button>
+        )}
+
+        {onOpenFeedback && (
+          <button
+            onClick={onOpenFeedback}
+            className="p-2 sm:px-2.5 sm:py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-emerald-400 hover:text-emerald-300 text-xs font-medium transition flex items-center gap-1.5"
+            title="Send Feedback"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Feedback</span>
+          </button>
+        )}
+
         <button
           onClick={onOpenCreatePrompt}
           className="flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-zinc-950 bg-zinc-100 hover:bg-white active:scale-95 rounded-lg transition shrink-0 shadow-sm"

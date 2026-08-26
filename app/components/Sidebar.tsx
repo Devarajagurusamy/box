@@ -10,7 +10,9 @@ import {
   ExternalLink,
   LayoutGrid,
   Box,
-  X
+  X,
+  MessageSquare,
+  Share2
 } from 'lucide-react';
 import { Category, QuickToolLink } from '../types';
 import { CategoryIcon } from './CategoryIcon';
@@ -67,6 +69,8 @@ interface SidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   onOpenDeveloperModal?: () => void;
+  onOpenFeedback?: () => void;
+  onShareApp?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -89,6 +93,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
   onOpenDeveloperModal,
+  onOpenFeedback,
+  onShareApp,
 }) => {
   const isConnected = dbStatus?.connected === true;
 
@@ -366,7 +372,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Developer & Footer Status */}
         <div className="p-3 border-t border-zinc-800/80 space-y-2.5">
           {/* Developer Card */}
-          <div className="p-2 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 transition">
+          <div className="p-2 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 transition space-y-2">
             <div className="flex items-center justify-between gap-2">
               <button
                 onClick={() => {
@@ -418,6 +424,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
+            </div>
+
+            {/* Quick Feedback & Share Bar */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-zinc-800/60">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenFeedback) onOpenFeedback();
+                  if (window.innerWidth < 1024) onCloseMobile();
+                }}
+                className="flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-800 hover:text-white text-zinc-300 text-[11px] font-medium transition"
+                title="Send Feedback to Developer"
+              >
+                <MessageSquare className="w-3 h-3 text-emerald-400" />
+                <span>Feedback</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (onShareApp) onShareApp();
+                  if (window.innerWidth < 1024) onCloseMobile();
+                }}
+                className="flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-800 hover:text-white text-zinc-300 text-[11px] font-medium transition"
+                title="Share BOX Vault"
+              >
+                <Share2 className="w-3 h-3 text-zinc-400" />
+                <span>Share</span>
+              </button>
             </div>
           </div>
 

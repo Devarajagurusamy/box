@@ -9,9 +9,9 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Sparkles,
   Code2,
-  GlobeLockIcon
+  MessageSquare,
+  Share2
 } from 'lucide-react';
 
 const GithubIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -48,9 +48,16 @@ const LinkedinIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
 interface DeveloperModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenFeedback?: () => void;
+  onShareApp?: () => void;
 }
 
-export const DeveloperModal: React.FC<DeveloperModalProps> = ({ isOpen, onClose }) => {
+export const DeveloperModal: React.FC<DeveloperModalProps> = ({
+  isOpen,
+  onClose,
+  onOpenFeedback,
+  onShareApp,
+}) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -189,7 +196,7 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* Social Links Grid */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 mb-4">
             <a
               href={developerInfo.github}
               target="_blank"
@@ -219,6 +226,34 @@ export const DeveloperModal: React.FC<DeveloperModalProps> = ({ isOpen, onClose 
               <Globe className="w-4 h-4 text-zinc-300 group-hover:text-white mb-1 transition" />
               <span className="text-[11px] font-medium text-zinc-400 group-hover:text-zinc-200">Portfolio</span>
             </a>
+          </div>
+
+          {/* User Feedback & Share App CTAs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-zinc-800/80">
+            {onOpenFeedback && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenFeedback();
+                }}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/60 text-emerald-300 text-xs font-semibold transition active:scale-95 shadow-xs"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Give Feedback</span>
+              </button>
+            )}
+
+            {onShareApp && (
+              <button
+                type="button"
+                onClick={onShareApp}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-semibold transition active:scale-95"
+              >
+                <Share2 className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Share BOX</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

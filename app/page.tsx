@@ -52,6 +52,7 @@ import { CategoryModal } from './components/CategoryModal';
 import { QuickLinkModal } from './components/QuickLinkModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { DeveloperModal } from './components/DeveloperModal';
+import { FeedbackModal } from './components/FeedbackModal';
 import { ToastContainer } from './components/Toast';
 import { CategoryIcon } from './components/CategoryIcon';
 
@@ -85,6 +86,7 @@ export default function Home() {
   const [quickLinkToEdit, setQuickLinkToEdit] = useState<QuickToolLink | null>(null);
 
   const [isDeveloperModalOpen, setIsDeveloperModalOpen] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -330,6 +332,62 @@ export default function Home() {
       addToast('Copied to Clipboard', '', 'success');
     } catch {
       addToast('Copy Failed', '', 'error');
+    }
+  };
+
+  const handleSharePrompt = async (prompt: Prompt, customContent?: string) => {
+    const textToShare = `${prompt.title}\n\n${customContent || prompt.content}`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: prompt.title,
+          text: textToShare,
+        });
+        addToast('Prompt Shared', `"${prompt.title}"`, 'success');
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          try {
+            await navigator.clipboard.writeText(textToShare);
+            addToast('Prompt Copied for Sharing', `"${prompt.title}"`, 'success');
+          } catch {}
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(textToShare);
+        addToast('Prompt Copied for Sharing', `"${prompt.title}" copied to clipboard.`, 'success');
+      } catch {
+        addToast('Share Failed', '', 'error');
+      }
+    }
+  };
+
+  const handleShareApp = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const shareData = {
+      title: 'BOX — Prompt Library & Web Resource Vault',
+      text: 'Organize and playground your AI prompts with BOX — Prompt Library & Web Resource Vault created by DEVARAJA S G.',
+      url: shareUrl,
+    };
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        addToast('App Shared', 'Thanks for sharing BOX!', 'success');
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            addToast('Vault Link Copied', 'App link copied to clipboard.', 'success');
+          } catch {}
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        addToast('Vault Link Copied', 'App link copied to clipboard.', 'success');
+      } catch {
+        addToast('Copy Failed', '', 'error');
+      }
     }
   };
 
@@ -619,6 +677,8 @@ export default function Home() {
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onOpenDeveloperModal={() => setIsDeveloperModalOpen(true)}
+        onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+        onShareApp={handleShareApp}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -638,6 +698,8 @@ export default function Home() {
           onImportFile={handleImportFile}
           onResetDemoData={handleClearVault}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+          onShareApp={handleShareApp}
         />
 
         <main className="flex-1 p-4 lg:p-6 max-w-7xl w-full mx-auto space-y-4">
@@ -767,6 +829,7 @@ export default function Home() {
                     onDuplicate={handleDuplicatePrompt}
                     onDelete={handleDeletePrompt}
                     onToggleFavorite={handleToggleFavorite}
+                    onShare={handleSharePrompt}
                   />
                 );
               })}
@@ -852,6 +915,7 @@ export default function Home() {
           setIsPromptModalOpen(true);
         }}
         onToggleFavorite={handleToggleFavorite}
+        onShare={handleSharePrompt}
       />
 
       <CategoryModal
@@ -877,6 +941,14 @@ export default function Home() {
       <DeveloperModal
         isOpen={isDeveloperModalOpen}
         onClose={() => setIsDeveloperModalOpen(false)}
+        onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+        onShareApp={handleShareApp}
+      />
+
+      <FeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        onSuccessToast={addToast}
       />
 
       <DeleteConfirmModal

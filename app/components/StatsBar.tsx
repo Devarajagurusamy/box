@@ -11,7 +11,7 @@ interface StatsBarProps {
   totalFavorites: number;
 }
 
-export const StatsBar: React.FC<StatsBarProps> = ({
+const StatsBarComponent: React.FC<StatsBarProps> = ({
   totalPrompts,
   totalCategories,
   totalLinks,
@@ -65,3 +65,5 @@ export const StatsBar: React.FC<StatsBarProps> = ({
     </div>
   );
 };
+
+export const StatsBar = React.memo(StatsBarComponent);

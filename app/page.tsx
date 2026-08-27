@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import {
   Plus,
   Search,
@@ -8,13 +8,10 @@ import {
   X,
   LayoutGrid,
   List,
-  FolderPlus,
   Globe2,
-  Lock,
-  Sparkles,
-  LogIn
+  Lock
 } from 'lucide-react';
-import { useUser, useClerk, SignInButton } from '@clerk/nextjs';
+import { useUser, useClerk } from '@clerk/nextjs';
 import {
   Prompt,
   Category,
@@ -65,7 +62,7 @@ import { ToastContainer } from './components/Toast';
 import { CategoryIcon } from './components/CategoryIcon';
 
 export default function Home() {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn } = useUser();
   const { openSignIn } = useClerk();
 
   const [activeSpace, setActiveSpace] = useState<VaultSpace>('public');
@@ -76,6 +73,8 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'alpha'>('recent');
@@ -122,9 +121,9 @@ export default function Home() {
     []
   );
 
-  const dismissToast = (id: string) => {
+  const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
   const requireAuth = useCallback(
     (actionName: string = 'perform this action'): boolean => {
@@ -138,31 +137,44 @@ export default function Home() {
     [isSignedIn, openSignIn, addToast]
   );
 
-  // Load data according to activeSpace & auth status
+  // Instant hydration from localStorage on mount
+  useEffect(() => {
+    const localCats = getStoredCategories();
+    const localPrompts = getStoredPrompts();
+    const localLinks = getStoredQuickLinks();
+    if (localCats.length > 0) setCategories(localCats);
+    if (localPrompts.length > 0) setPrompts(localPrompts);
+    if (localLinks.length > 0) setQuickLinks(localLinks);
+    setIsLoaded(true);
+  }, []);
+
+  // Concurrent Background Data Syncing
   const loadDataForSpace = useCallback(
     async (space: VaultSpace) => {
       try {
-        const status = await checkDBStatus();
-        setDbStatus(status);
+        const [statusRes, promptsRes, catsRes, linksRes] = await Promise.allSettled([
+          checkDBStatus(),
+          apiFetchPrompts(space),
+          apiFetchCategories(space),
+          apiFetchQuickLinks(space),
+        ]);
 
-        if (status.connected) {
-          const [remotePrompts, remoteCats, remoteLinks] = await Promise.all([
-            apiFetchPrompts(space),
-            apiFetchCategories(space),
-            apiFetchQuickLinks(space),
-          ]);
+        if (statusRes.status === 'fulfilled') {
+          setDbStatus(statusRes.value);
+        }
 
-          if (remoteCats) {
-            setCategories(remoteCats);
-            if (space === 'public') saveStoredCategories(remoteCats);
+        if (statusRes.status === 'fulfilled' && statusRes.value.connected) {
+          if (catsRes.status === 'fulfilled' && catsRes.value) {
+            setCategories(catsRes.value);
+            if (space === 'public') saveStoredCategories(catsRes.value);
           }
-          if (remotePrompts) {
-            setPrompts(remotePrompts);
-            if (space === 'public') saveStoredPrompts(remotePrompts);
+          if (promptsRes.status === 'fulfilled' && promptsRes.value) {
+            setPrompts(promptsRes.value);
+            if (space === 'public') saveStoredPrompts(promptsRes.value);
           }
-          if (remoteLinks) {
-            setQuickLinks(remoteLinks);
-            if (space === 'public') saveStoredQuickLinks(remoteLinks);
+          if (linksRes.status === 'fulfilled' && linksRes.value) {
+            setQuickLinks(linksRes.value);
+            if (space === 'public') saveStoredQuickLinks(linksRes.value);
           }
         } else {
           // Fallback to local storage
@@ -174,8 +186,6 @@ export default function Home() {
         setCategories(getStoredCategories());
         setPrompts(getStoredPrompts());
         setQuickLinks(getStoredQuickLinks());
-      } finally {
-        setIsLoaded(true);
       }
     },
     []
@@ -201,7 +211,7 @@ export default function Home() {
   }, [isLoaded, prompts]);
 
   // Space switcher handler
-  const handleChangeSpace = (newSpace: VaultSpace) => {
+  const handleChangeSpace = useCallback((newSpace: VaultSpace) => {
     if (newSpace === 'personal' && !isSignedIn) {
       addToast('Sign In Required', 'Please sign in to access your Personal Space.', 'info');
       openSignIn();
@@ -210,7 +220,7 @@ export default function Home() {
     setActiveSpace(newSpace);
     setSelectedCategory(null);
     setOnlyFavorites(false);
-  };
+  }, [isSignedIn, addToast, openSignIn]);
 
   // Keyboard shortcut (N for new prompt)
   useEffect(() => {
@@ -235,45 +245,57 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Save prompt (Public: no auth needed, Personal: auth needed)
-  const handleSavePrompt = async (savedPrompt: Prompt) => {
+  // Card & Detail Action Callbacks (Memoized with stable references)
+  const handleOpenDetail = useCallback((prompt: Prompt) => {
+    setPromptToView(prompt);
+    setIsDetailModalOpen(true);
+  }, []);
+
+  const handleOpenEditPrompt = useCallback((prompt: Prompt) => {
+    setPromptToEdit(prompt);
+    setIsPromptModalOpen(true);
+  }, []);
+
+  const handleSavePrompt = useCallback(async (savedPrompt: Prompt) => {
     const isSavingAsPublic = savedPrompt.isPublic !== false;
 
     if (!isSavingAsPublic && !isSignedIn) {
       if (!requireAuth('save prompts to Personal Space')) return;
     }
 
-    let updatedPrompts: Prompt[];
-    const exists = prompts.some((p) => p.id === savedPrompt.id);
+    setPrompts((currentPrompts) => {
+      let updatedPrompts: Prompt[];
+      const exists = currentPrompts.some((p) => p.id === savedPrompt.id);
 
-    if (exists) {
-      updatedPrompts = prompts.map((p) => (p.id === savedPrompt.id ? savedPrompt : p));
-      addToast('Prompt Updated', `Saved "${savedPrompt.title}".`);
-      if (dbStatus?.connected) {
+      if (exists) {
+        updatedPrompts = currentPrompts.map((p) => (p.id === savedPrompt.id ? savedPrompt : p));
+        addToast('Prompt Updated', `Saved "${savedPrompt.title}".`);
         apiSavePrompt(savedPrompt);
-      }
-    } else {
-      updatedPrompts = [savedPrompt, ...prompts];
-      addToast(
-        isSavingAsPublic ? 'Public Prompt Published' : 'Saved to Personal Space',
-        `"${savedPrompt.title}" has been added to ${isSavingAsPublic ? 'the Public Vault' : 'your Personal Space'}.`
-      );
-      if (dbStatus?.connected) {
+      } else {
+        updatedPrompts = [savedPrompt, ...currentPrompts];
+        addToast(
+          isSavingAsPublic ? 'Public Prompt Published' : 'Saved to Personal Space',
+          `"${savedPrompt.title}" has been added to ${isSavingAsPublic ? 'the Public Vault' : 'your Personal Space'}.`
+        );
         apiCreatePrompt(savedPrompt);
       }
-    }
 
-    setPrompts(updatedPrompts);
-    if (activeSpace === 'public') {
-      saveStoredPrompts(updatedPrompts);
-    }
+      if (activeSpace === 'public') {
+        saveStoredPrompts(updatedPrompts);
+      }
 
-    if (promptToView && promptToView.id === savedPrompt.id) {
-      setPromptToView(savedPrompt);
-    }
-  };
+      return updatedPrompts;
+    });
 
-  const handleDeletePrompt = (prompt: Prompt) => {
+    setPromptToView((currentView) => {
+      if (currentView && currentView.id === savedPrompt.id) {
+        return savedPrompt;
+      }
+      return currentView;
+    });
+  }, [isSignedIn, requireAuth, activeSpace, addToast]);
+
+  const handleDeletePrompt = useCallback((prompt: Prompt) => {
     if (prompt.isPublic === false && !requireAuth('delete personal prompts')) return;
 
     setDeleteModal({
@@ -281,26 +303,29 @@ export default function Home() {
       title: 'Delete Prompt',
       message: `Delete "${prompt.title}"?`,
       onConfirm: async () => {
-        const updated = prompts.filter((p) => p.id !== prompt.id);
-        setPrompts(updated);
-        if (activeSpace === 'public') {
-          saveStoredPrompts(updated);
-        }
+        setPrompts((current) => {
+          const updated = current.filter((p) => p.id !== prompt.id);
+          if (activeSpace === 'public') {
+            saveStoredPrompts(updated);
+          }
+          return updated;
+        });
 
-        if (dbStatus?.connected) {
-          apiDeletePrompt(prompt.id);
-        }
-
+        apiDeletePrompt(prompt.id);
         addToast('Prompt Deleted', '', 'info');
-        if (promptToView?.id === prompt.id) {
-          setIsDetailModalOpen(false);
-          setPromptToView(null);
-        }
+
+        setPromptToView((currentView) => {
+          if (currentView?.id === prompt.id) {
+            setIsDetailModalOpen(false);
+            return null;
+          }
+          return currentView;
+        });
       },
     });
-  };
+  }, [requireAuth, activeSpace, addToast]);
 
-  const handleDuplicatePrompt = async (prompt: Prompt) => {
+  const handleDuplicatePrompt = useCallback(async (prompt: Prompt) => {
     const duplicated: Prompt = {
       ...prompt,
       id: `prompt-${Date.now()}`,
@@ -311,138 +336,114 @@ export default function Home() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const updated = [duplicated, ...prompts];
-    setPrompts(updated);
-    if (activeSpace === 'public') {
-      saveStoredPrompts(updated);
-    }
 
-    if (dbStatus?.connected) {
-      apiCreatePrompt(duplicated);
-    }
-
-    addToast('Prompt Duplicated', `Created copy in ${activeSpace === 'public' ? 'Public Vault' : 'Personal Space'}.`);
-  };
-
-  // Like & Auto-Save to Personal Space
-  const handleToggleFavorite = async (id: string) => {
-    const targetPrompt = prompts.find((p) => p.id === id);
-
-    if (!isSignedIn) {
-      addToast(
-        'Sign In Required',
-        'Sign in to save this prompt to your personal space.',
-        'info'
-      );
-      openSignIn();
-      return;
-    }
-
-    // Call API toggle
-    if (dbStatus?.connected) {
-      apiToggleLikePrompt(id);
-    }
-
-    const updated = prompts.map((p) => {
-      if (p.id === id) {
-        const nextFav = !p.isFavorite;
-        const updatedItem = { ...p, isFavorite: nextFav };
-
-        if (nextFav) {
-          addToast(
-            'Saved to Personal Space!',
-            `"${p.title}" is now available in your Personal Space.`,
-            'success'
-          );
-        } else {
-          addToast(
-            'Removed from Favorites',
-            `"${p.title}"`,
-            'info'
-          );
-        }
-        return updatedItem;
-      }
-      return p;
-    });
-
-    setPrompts(updated);
-    if (activeSpace === 'public') {
-      saveStoredPrompts(updated);
-    }
-
-    if (promptToView && promptToView.id === id) {
-      setPromptToView({ ...promptToView, isFavorite: !promptToView.isFavorite });
-    }
-  };
-
-  // Like & Auto-Save Link to Personal Space
-  const handleToggleFavoriteLink = async (id: string) => {
-    const targetLink = quickLinks.find((l) => l.id === id);
-
-    if (!isSignedIn) {
-      addToast(
-        'Sign In Required',
-        'Sign in to save this link to your personal space.',
-        'info'
-      );
-      openSignIn();
-      return;
-    }
-
-    if (dbStatus?.connected) {
-      apiToggleLikeQuickLink(id);
-    }
-
-    const updated = quickLinks.map((l) => {
-      if (l.id === id) {
-        const nextFav = !l.isFavorite;
-        const updatedItem = { ...l, isFavorite: nextFav };
-
-        if (nextFav) {
-          addToast(
-            'Saved Link to Personal Space!',
-            `"${l.name}" is now saved in your Personal Space.`,
-            'success'
-          );
-        } else {
-          addToast('Removed from Favorites', `"${l.name}"`, 'info');
-        }
-        return updatedItem;
-      }
-      return l;
-    });
-
-    setQuickLinks(updated);
-    if (activeSpace === 'public') {
-      saveStoredQuickLinks(updated);
-    }
-  };
-
-  const handleCopyPrompt = async (text: string, title: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      const updated = prompts.map((p) => {
-        if (p.title === title) {
-          const item = { ...p, copyCount: (p.copyCount || 0) + 1 };
-          if (dbStatus?.connected) {
-            apiSavePrompt(item);
-          }
-          return item;
-        }
-        return p;
-      });
-      setPrompts(updated);
+    setPrompts((current) => {
+      const updated = [duplicated, ...current];
       if (activeSpace === 'public') {
         saveStoredPrompts(updated);
       }
+      return updated;
+    });
+
+    apiCreatePrompt(duplicated);
+    addToast('Prompt Duplicated', `Created copy in ${activeSpace === 'public' ? 'Public Vault' : 'Personal Space'}.`);
+  }, [activeSpace, addToast]);
+
+  const handleToggleFavorite = useCallback(async (id: string) => {
+    if (!isSignedIn) {
+      addToast('Sign In Required', 'Sign in to save this prompt to your personal space.', 'info');
+      openSignIn();
+      return;
+    }
+
+    apiToggleLikePrompt(id);
+
+    setPrompts((current) => {
+      const updated = current.map((p) => {
+        if (p.id === id) {
+          const nextFav = !p.isFavorite;
+          const updatedItem = { ...p, isFavorite: nextFav };
+
+          if (nextFav) {
+            addToast('Saved to Personal Space!', `"${p.title}" is now available in your Personal Space.`, 'success');
+          } else {
+            addToast('Removed from Favorites', `"${p.title}"`, 'info');
+          }
+          return updatedItem;
+        }
+        return p;
+      });
+
+      if (activeSpace === 'public') {
+        saveStoredPrompts(updated);
+      }
+      return updated;
+    });
+
+    setPromptToView((current) => {
+      if (current && current.id === id) {
+        return { ...current, isFavorite: !current.isFavorite };
+      }
+      return current;
+    });
+  }, [isSignedIn, addToast, openSignIn, activeSpace]);
+
+  const handleToggleFavoriteLink = useCallback(async (id: string) => {
+    if (!isSignedIn) {
+      addToast('Sign In Required', 'Sign in to save this link to your personal space.', 'info');
+      openSignIn();
+      return;
+    }
+
+    apiToggleLikeQuickLink(id);
+
+    setQuickLinks((current) => {
+      const updated = current.map((l) => {
+        if (l.id === id) {
+          const nextFav = !l.isFavorite;
+          const updatedItem = { ...l, isFavorite: nextFav };
+
+          if (nextFav) {
+            addToast('Saved Link to Personal Space!', `"${l.name}" is now saved in your Personal Space.`, 'success');
+          } else {
+            addToast('Removed from Favorites', `"${l.name}"`, 'info');
+          }
+          return updatedItem;
+        }
+        return l;
+      });
+
+      if (activeSpace === 'public') {
+        saveStoredQuickLinks(updated);
+      }
+      return updated;
+    });
+  }, [isSignedIn, addToast, openSignIn, activeSpace]);
+
+  const handleCopyPrompt = useCallback(async (text: string, title: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setPrompts((current) => {
+        const updated = current.map((p) => {
+          if (p.title === title) {
+            const item = { ...p, copyCount: (p.copyCount || 0) + 1 };
+            apiSavePrompt(item);
+            return item;
+          }
+          return p;
+        });
+        if (activeSpace === 'public') {
+          saveStoredPrompts(updated);
+        }
+        return updated;
+      });
       addToast('Copied to Clipboard', '', 'success');
     } catch {
       addToast('Copy Failed', '', 'error');
     }
-  };
+  }, [activeSpace, addToast]);
 
-  const handleSharePrompt = async (prompt: Prompt, customContent?: string) => {
+  const handleSharePrompt = useCallback(async (prompt: Prompt, customContent?: string) => {
     const shareUrl =
       typeof window !== 'undefined'
         ? `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(prompt.id)}`
@@ -460,7 +461,7 @@ export default function Home() {
             text: `${prompt.title} - ${prompt.description || 'AI Prompt on BOX'}`,
             url: shareUrl,
           });
-        } catch (err: any) {
+        } catch {
           // user cancelled native share
         }
       }
@@ -468,9 +469,9 @@ export default function Home() {
     } catch {
       addToast('Copy Link Failed', '', 'error');
     }
-  };
+  }, [addToast]);
 
-  const handleShareApp = async () => {
+  const handleShareApp = useCallback(async () => {
     const shareUrl =
       typeof window !== 'undefined'
         ? `${window.location.origin}${window.location.pathname}`
@@ -488,7 +489,7 @@ export default function Home() {
       if (typeof navigator !== 'undefined' && navigator.share) {
         try {
           await navigator.share(shareData);
-        } catch (err: any) {
+        } catch {
           // user cancelled native share
         }
       }
@@ -496,31 +497,28 @@ export default function Home() {
     } catch {
       addToast('Copy Link Failed', '', 'error');
     }
-  };
+  }, [addToast]);
 
-  const handleSaveCategory = async (savedCategory: Category) => {
-    let updatedCategories: Category[];
-    const exists = categories.some((c) => c.id === savedCategory.id);
+  const handleSaveCategory = useCallback(async (savedCategory: Category) => {
+    setCategories((current) => {
+      let updatedCategories: Category[];
+      const exists = current.some((c) => c.id === savedCategory.id);
 
-    if (exists) {
-      updatedCategories = categories.map((c) =>
-        c.id === savedCategory.id ? savedCategory : c
-      );
-      addToast('Category Saved', `"${savedCategory.name}".`);
-    } else {
-      updatedCategories = [...categories, savedCategory];
-      addToast('Category Created', `"${savedCategory.name}".`);
-    }
+      if (exists) {
+        updatedCategories = current.map((c) => (c.id === savedCategory.id ? savedCategory : c));
+        addToast('Category Saved', `"${savedCategory.name}".`);
+      } else {
+        updatedCategories = [...current, savedCategory];
+        addToast('Category Created', `"${savedCategory.name}".`);
+      }
 
-    setCategories(updatedCategories);
-    saveStoredCategories(updatedCategories);
-
-    if (dbStatus?.connected) {
+      saveStoredCategories(updatedCategories);
       apiSaveCategory(savedCategory);
-    }
-  };
+      return updatedCategories;
+    });
+  }, [addToast]);
 
-  const handleDeleteCategory = (category: Category) => {
+  const handleDeleteCategory = useCallback((category: Category) => {
     if (!requireAuth('delete categories')) return;
 
     const count = prompts.filter((p) => p.categoryId === category.id).length;
@@ -534,29 +532,29 @@ export default function Home() {
       title: 'Delete Category',
       message,
       onConfirm: async () => {
-        const updatedCats = categories.filter((c) => c.id !== category.id);
-        setCategories(updatedCats);
-        saveStoredCategories(updatedCats);
-
-        if (dbStatus?.connected) {
+        setCategories((current) => {
+          const updatedCats = current.filter((c) => c.id !== category.id);
+          saveStoredCategories(updatedCats);
           apiDeleteCategory(category.id);
-        }
 
-        if (count > 0) {
-          const fallbackCatId = updatedCats[0]?.id || 'general';
-          const updatedPrompts = prompts.map((p) => {
-            if (p.categoryId === category.id) {
-              const updatedItem = { ...p, categoryId: fallbackCatId };
-              if (dbStatus?.connected) {
-                apiSavePrompt(updatedItem);
-              }
-              return updatedItem;
-            }
-            return p;
-          });
-          setPrompts(updatedPrompts);
-          saveStoredPrompts(updatedPrompts);
-        }
+          if (count > 0) {
+            const fallbackCatId = updatedCats[0]?.id || 'general';
+            setPrompts((currentPrompts) => {
+              const updatedPrompts = currentPrompts.map((p) => {
+                if (p.categoryId === category.id) {
+                  const updatedItem = { ...p, categoryId: fallbackCatId };
+                  apiSavePrompt(updatedItem);
+                  return updatedItem;
+                }
+                return p;
+              });
+              saveStoredPrompts(updatedPrompts);
+              return updatedPrompts;
+            });
+          }
+
+          return updatedCats;
+        });
 
         if (selectedCategory === category.id) {
           setSelectedCategory(null);
@@ -565,49 +563,46 @@ export default function Home() {
         addToast('Category Deleted', '', 'info');
       },
     });
-  };
+  }, [requireAuth, prompts, selectedCategory, addToast]);
 
-  const handleSaveQuickLink = async (savedLink: QuickToolLink) => {
-    let updatedLinks: QuickToolLink[];
-    const exists = quickLinks.some((l) => l.id === savedLink.id);
+  const handleSaveQuickLink = useCallback(async (savedLink: QuickToolLink) => {
+    setQuickLinks((current) => {
+      let updatedLinks: QuickToolLink[];
+      const exists = current.some((l) => l.id === savedLink.id);
 
-    if (exists) {
-      updatedLinks = quickLinks.map((l) => (l.id === savedLink.id ? savedLink : l));
-      addToast('Link Updated', `"${savedLink.name}".`);
-    } else {
-      updatedLinks = [...quickLinks, savedLink];
-      addToast('Link Added', `"${savedLink.name}".`);
-    }
+      if (exists) {
+        updatedLinks = current.map((l) => (l.id === savedLink.id ? savedLink : l));
+        addToast('Link Updated', `"${savedLink.name}".`);
+      } else {
+        updatedLinks = [...current, savedLink];
+        addToast('Link Added', `"${savedLink.name}".`);
+      }
 
-    setQuickLinks(updatedLinks);
-    saveStoredQuickLinks(updatedLinks);
-
-    if (dbStatus?.connected) {
+      saveStoredQuickLinks(updatedLinks);
       apiSaveQuickLink(savedLink);
-    }
-  };
+      return updatedLinks;
+    });
+  }, [addToast]);
 
-  const handleDeleteQuickLink = (id: string) => {
+  const handleDeleteQuickLink = useCallback((id: string) => {
     const link = quickLinks.find((l) => l.id === id);
     setDeleteModal({
       isOpen: true,
       title: 'Delete Link',
       message: `Delete link "${link?.name || id}"?`,
       onConfirm: async () => {
-        const updated = quickLinks.filter((l) => l.id !== id);
-        setQuickLinks(updated);
-        saveStoredQuickLinks(updated);
-
-        if (dbStatus?.connected) {
+        setQuickLinks((current) => {
+          const updated = current.filter((l) => l.id !== id);
+          saveStoredQuickLinks(updated);
           apiDeleteQuickLink(id);
-        }
-
+          return updated;
+        });
         addToast('Link Deleted', '', 'info');
       },
     });
-  };
+  }, [quickLinks, addToast]);
 
-  const handleExportVault = () => {
+  const handleExportVault = useCallback(() => {
     try {
       const jsonString = exportVaultJSON();
       const blob = new Blob([jsonString], { type: 'application/json' });
@@ -623,9 +618,9 @@ export default function Home() {
     } catch {
       addToast('Export Failed', 'Unable to export vault.', 'error');
     }
-  };
+  }, [addToast]);
 
-  const handleImportFile = (file: File) => {
+  const handleImportFile = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
@@ -642,9 +637,9 @@ export default function Home() {
       }
     };
     reader.readAsText(file);
-  };
+  }, [addToast]);
 
-  const handleClearVault = () => {
+  const handleClearVault = useCallback(() => {
     setDeleteModal({
       isOpen: true,
       title: 'Reset Vault Data',
@@ -654,13 +649,11 @@ export default function Home() {
         setPrompts([]);
         setCategories([]);
         setQuickLinks([]);
-        if (dbStatus?.connected) {
-          await apiClearDatabase();
-        }
+        await apiClearDatabase();
         addToast('Vault Reset', 'All prompts cleared.', 'info');
       },
     });
-  };
+  }, [addToast]);
 
   const promptCountByCategory = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -671,12 +664,12 @@ export default function Home() {
   }, [prompts]);
 
   const filteredPrompts = useMemo(() => {
+    const q = deferredSearchQuery.trim().toLowerCase();
     return prompts
       .filter((p) => {
         if (selectedCategory && p.categoryId !== selectedCategory) return false;
         if (onlyFavorites && !p.isFavorite) return false;
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
+        if (q) {
           const matchTitle = p.title.toLowerCase().includes(q);
           const matchDesc = (p.description || '').toLowerCase().includes(q);
           const matchContent = p.content.toLowerCase().includes(q);
@@ -698,7 +691,7 @@ export default function Home() {
         }
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [prompts, selectedCategory, onlyFavorites, searchQuery, sortBy, categories]);
+  }, [prompts, selectedCategory, onlyFavorites, deferredSearchQuery, sortBy, categories]);
 
   const totalCopies = useMemo(
     () => prompts.reduce((acc, p) => acc + (p.copyCount || 0), 0),
@@ -713,7 +706,10 @@ export default function Home() {
     [prompts]
   );
 
-  const activeCategoryObj = categories.find((c) => c.id === selectedCategory);
+  const activeCategoryObj = useMemo(
+    () => categories.find((c) => c.id === selectedCategory),
+    [categories, selectedCategory]
+  );
   const activeCategoryColor = activeCategoryObj?.color?.startsWith('bg-')
     ? activeCategoryObj.color
     : 'bg-zinc-700';
@@ -723,19 +719,11 @@ export default function Home() {
     onlyFavorites ||
     Boolean(searchQuery.trim());
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setSelectedCategory(null);
     setOnlyFavorites(false);
     setSearchQuery('');
-  };
-
-  if (!isLoaded) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 text-white font-mono text-xs">
-        Loading BOX Vault...
-      </div>
-    );
-  }
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-100 font-sans">
@@ -750,8 +738,8 @@ export default function Home() {
         totalPromptsCount={prompts.length}
         favoritePromptsCount={favoriteCount}
         dbStatus={dbStatus}
-        onSelectCategory={(id) => setSelectedCategory(id)}
-        onToggleOnlyFavorites={() => setOnlyFavorites(!onlyFavorites)}
+        onSelectCategory={setSelectedCategory}
+        onToggleOnlyFavorites={() => setOnlyFavorites((prev) => !prev)}
         onOpenCreateCategory={() => {
           setCategoryToEdit(null);
           setIsCategoryModalOpen(true);
@@ -795,7 +783,7 @@ export default function Home() {
           onExport={handleExportVault}
           onImportFile={handleImportFile}
           onResetDemoData={handleClearVault}
-          onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
           onOpenFeedback={() => setIsFeedbackModalOpen(true)}
           onShareApp={handleShareApp}
         />
@@ -918,14 +906,8 @@ export default function Home() {
                     viewMode={viewMode}
                     activeSpace={activeSpace}
                     onCopy={handleCopyPrompt}
-                    onOpenDetail={(p) => {
-                      setPromptToView(p);
-                      setIsDetailModalOpen(true);
-                    }}
-                    onEdit={(p) => {
-                      setPromptToEdit(p);
-                      setIsPromptModalOpen(true);
-                    }}
+                    onOpenDetail={handleOpenDetail}
+                    onEdit={handleOpenEditPrompt}
                     onDuplicate={handleDuplicatePrompt}
                     onDelete={handleDeletePrompt}
                     onToggleFavorite={handleToggleFavorite}
@@ -976,77 +958,89 @@ export default function Home() {
         </main>
       </div>
 
-      <PromptModal
-        isOpen={isPromptModalOpen}
-        promptToEdit={promptToEdit}
-        categories={categories}
-        initialCategoryId={selectedCategory}
-        activeSpace={activeSpace}
-        isSignedIn={Boolean(isSignedIn)}
-        onClose={() => {
-          setIsPromptModalOpen(false);
-          setPromptToEdit(null);
-        }}
-        onSave={handleSavePrompt}
-        onOpenCreateCategory={() => {
-          setCategoryToEdit(null);
-          setIsCategoryModalOpen(true);
-        }}
-      />
+      {isPromptModalOpen && (
+        <PromptModal
+          isOpen={isPromptModalOpen}
+          promptToEdit={promptToEdit}
+          categories={categories}
+          initialCategoryId={selectedCategory}
+          activeSpace={activeSpace}
+          isSignedIn={Boolean(isSignedIn)}
+          onClose={() => {
+            setIsPromptModalOpen(false);
+            setPromptToEdit(null);
+          }}
+          onSave={handleSavePrompt}
+          onOpenCreateCategory={() => {
+            setCategoryToEdit(null);
+            setIsCategoryModalOpen(true);
+          }}
+        />
+      )}
 
-      <PromptDetailModal
-        isOpen={isDetailModalOpen}
-        prompt={promptToView}
-        category={categories.find((c) => c.id === promptToView?.categoryId)}
-        activeSpace={activeSpace}
-        onClose={() => {
-          setIsDetailModalOpen(false);
-          setPromptToView(null);
-        }}
-        onCopy={handleCopyPrompt}
-        onEdit={(p) => {
-          setIsDetailModalOpen(false);
-          setPromptToEdit(p);
-          setIsPromptModalOpen(true);
-        }}
-        onToggleFavorite={handleToggleFavorite}
-        onShare={handleSharePrompt}
-      />
+      {isDetailModalOpen && (
+        <PromptDetailModal
+          isOpen={isDetailModalOpen}
+          prompt={promptToView}
+          category={categories.find((c) => c.id === promptToView?.categoryId)}
+          activeSpace={activeSpace}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setPromptToView(null);
+          }}
+          onCopy={handleCopyPrompt}
+          onEdit={(p) => {
+            setIsDetailModalOpen(false);
+            setPromptToEdit(p);
+            setIsPromptModalOpen(true);
+          }}
+          onToggleFavorite={handleToggleFavorite}
+          onShare={handleSharePrompt}
+        />
+      )}
 
-      <CategoryModal
-        isOpen={isCategoryModalOpen}
-        categoryToEdit={categoryToEdit}
-        onClose={() => {
-          setIsCategoryModalOpen(false);
-          setCategoryToEdit(null);
-        }}
-        onSave={handleSaveCategory}
-      />
+      {isCategoryModalOpen && (
+        <CategoryModal
+          isOpen={isCategoryModalOpen}
+          categoryToEdit={categoryToEdit}
+          onClose={() => {
+            setIsCategoryModalOpen(false);
+            setCategoryToEdit(null);
+          }}
+          onSave={handleSaveCategory}
+        />
+      )}
 
-      <QuickLinkModal
-        isOpen={isQuickLinkModalOpen}
-        linkToEdit={quickLinkToEdit}
-        activeSpace={activeSpace}
-        isSignedIn={Boolean(isSignedIn)}
-        onClose={() => {
-          setIsQuickLinkModalOpen(false);
-          setQuickLinkToEdit(null);
-        }}
-        onSave={handleSaveQuickLink}
-      />
+      {isQuickLinkModalOpen && (
+        <QuickLinkModal
+          isOpen={isQuickLinkModalOpen}
+          linkToEdit={quickLinkToEdit}
+          activeSpace={activeSpace}
+          isSignedIn={Boolean(isSignedIn)}
+          onClose={() => {
+            setIsQuickLinkModalOpen(false);
+            setQuickLinkToEdit(null);
+          }}
+          onSave={handleSaveQuickLink}
+        />
+      )}
 
-      <DeveloperModal
-        isOpen={isDeveloperModalOpen}
-        onClose={() => setIsDeveloperModalOpen(false)}
-        onOpenFeedback={() => setIsFeedbackModalOpen(true)}
-        onShareApp={handleShareApp}
-      />
+      {isDeveloperModalOpen && (
+        <DeveloperModal
+          isOpen={isDeveloperModalOpen}
+          onClose={() => setIsDeveloperModalOpen(false)}
+          onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+          onShareApp={handleShareApp}
+        />
+      )}
 
-      <FeedbackModal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => setIsFeedbackModalOpen(false)}
-        onSuccessToast={addToast}
-      />
+      {isFeedbackModalOpen && (
+        <FeedbackModal
+          isOpen={isFeedbackModalOpen}
+          onClose={() => setIsFeedbackModalOpen(false)}
+          onSuccessToast={addToast}
+        />
+      )}
 
       <DeleteConfirmModal
         isOpen={deleteModal.isOpen}

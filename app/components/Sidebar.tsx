@@ -80,7 +80,7 @@ interface SidebarProps {
   onShareApp?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+const SidebarComponent: React.FC<SidebarProps> = ({
   activeSpace,
   onChangeSpace,
   categories,
@@ -134,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="w-7 h-7 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
               <Box className="w-4 h-4" />
             </div>
-            <span className="font-bold text-base tracking-tight text-white font-mono">BOX</span>
+            <span className="font-bold text-base tracking-tight text-white font-mono">BOX APP</span>
           </div>
 
           {/* Close button for mobile */}
@@ -547,3 +547,5 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </>
   );
 };
+
+export const Sidebar = React.memo(SidebarComponent);

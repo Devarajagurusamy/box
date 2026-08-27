@@ -28,12 +28,15 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
   }
 
   if (!cached!.promise) {
-    const opts = {
+    const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Timeout quickly if MongoDB is not reachable
+      serverSelectionTimeoutMS: 2500, // Fail fast to local storage fallback if unreachable
+      connectTimeoutMS: 3000,
+      maxPoolSize: 10,
+      minPoolSize: 1,
     };
 
-    cached!.promise = mongoose.connect(MONGODB_URI, opts).then((m) => m);
+    cached!.promise = mongoose.connect(MONGODB_URI, opts);
   }
 
   try {

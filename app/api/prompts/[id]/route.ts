@@ -15,12 +15,13 @@ export async function GET(_req: NextRequest, { params }: Context) {
     }
 
     const { id } = await params;
-    const prompt = await PromptModel.findOne({ id });
+    const prompt: any = await PromptModel.findOne({ id }).lean();
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt not found' }, { status: 404 });
     }
 
-    return NextResponse.json(prompt);
+    const { _id, __v, ...rest } = prompt;
+    return NextResponse.json(rest);
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: errorMsg }, { status: 500 });
@@ -38,7 +39,7 @@ export async function PUT(req: NextRequest, { params }: Context) {
     const body = await req.json();
     const { userId } = await auth();
 
-    const existing = await PromptModel.findOne({ id });
+    const existing: any = await PromptModel.findOne({ id }).select('userId isPublic').lean();
 
     // If existing prompt has a private owner, ensure requester is the owner
     if (existing && existing.userId && existing.userId !== userId && !existing.isPublic) {
@@ -52,19 +53,19 @@ export async function PUT(req: NextRequest, { params }: Context) {
 
     // If incrementing copy count or toggling like
     if (body.copyCount !== undefined && Object.keys(body).length <= 3) {
-      const updated = await PromptModel.findOneAndUpdate(
+      const updated: any = await PromptModel.findOneAndUpdate(
         { id },
         { $set: updatePayload },
         { new: true }
-      );
+      ).lean();
       return NextResponse.json(updated);
     }
 
-    const updated = await PromptModel.findOneAndUpdate(
+    const updated: any = await PromptModel.findOneAndUpdate(
       { id },
       { $set: updatePayload },
       { new: true, upsert: true }
-    );
+    ).lean();
 
     return NextResponse.json(updated);
   } catch (err: unknown) {
@@ -83,7 +84,7 @@ export async function DELETE(_req: NextRequest, { params }: Context) {
     const { id } = await params;
     const { userId } = await auth();
 
-    const existing = await PromptModel.findOne({ id });
+    const existing: any = await PromptModel.findOne({ id }).select('userId isPublic likedBy').lean();
     if (!existing) {
       return NextResponse.json({ error: 'Prompt not found' }, { status: 404 });
     }

@@ -58,7 +58,9 @@ interface CategoryIconProps {
   className?: string;
 }
 
-export const CategoryIcon: React.FC<CategoryIconProps> = ({ name, className = 'w-4 h-4' }) => {
+const CategoryIconComponent: React.FC<CategoryIconProps> = ({ name, className = 'w-4 h-4' }) => {
   const IconComponent = ICON_MAP[name] || Folder;
   return <IconComponent className={className} />;
 };
+
+export const CategoryIcon = React.memo(CategoryIconComponent);

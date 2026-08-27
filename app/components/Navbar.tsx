@@ -39,7 +39,7 @@ interface NavbarProps {
   onShareApp?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({
+const NavbarComponent: React.FC<NavbarProps> = ({
   searchQuery,
   onSearchChange,
   activeSpace = 'public',
@@ -175,3 +175,5 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+
+export const Navbar = React.memo(NavbarComponent);

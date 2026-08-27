@@ -36,14 +36,16 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const links = await QuickLinkModel.find(query);
+    const links = await QuickLinkModel.find(query).lean();
 
-    const formattedLinks = links.map((l) => {
-      const doc: any = l.toJSON();
-      if (userId) {
-        doc.isFavorite = Boolean(l.likedBy && l.likedBy.includes(userId)) || (l.userId === userId && l.isFavorite);
-      }
-      return doc;
+    const formattedLinks = links.map((l: any) => {
+      const { _id, __v, ...rest } = l;
+      return {
+        ...rest,
+        isFavorite: userId
+          ? Boolean((l.likedBy && l.likedBy.includes(userId)) || (l.userId === userId && l.isFavorite))
+          : false,
+      };
     });
 
     return NextResponse.json(formattedLinks);
@@ -75,8 +77,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let authorName = body.authorName || 'Community';
-    if (userId) {
+    let authorName = body.authorName ? body.authorName.trim() : 'Community';
+    if (userId && (!body.authorName || body.authorName === 'Community' || body.authorName === 'User')) {
       try {
         const user = await currentUser();
         if (user) {

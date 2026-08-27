@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import {
   Copy,
   Check,
@@ -32,7 +32,7 @@ interface PromptCardProps {
   onShare?: (prompt: Prompt) => void;
 }
 
-export const PromptCard: React.FC<PromptCardProps> = ({
+const PromptCardComponent: React.FC<PromptCardProps> = ({
   prompt,
   category,
   viewMode,
@@ -48,9 +48,11 @@ export const PromptCard: React.FC<PromptCardProps> = ({
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
 
-  const variables = Array.from(
-    new Set((prompt.content.match(/\{\{([a-zA-Z0-9_-]+)\}\}/g) || []).map((v) => v.replace(/[{}]/g, '')))
-  );
+  const variables = useMemo(() => {
+    const matches = prompt.content.match(/\{\{([a-zA-Z0-9_-]+)\}\}/g);
+    if (!matches) return [];
+    return Array.from(new Set(matches.map((v) => v.replace(/[{}]/g, ''))));
+  }, [prompt.content]);
 
   const isPublicPrompt = prompt.isPublic !== false;
 
@@ -440,3 +442,5 @@ export const PromptCard: React.FC<PromptCardProps> = ({
     </div>
   );
 };
+
+export const PromptCard = memo(PromptCardComponent);

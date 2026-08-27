@@ -34,8 +34,12 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const categories = await CategoryModel.find(query);
-    return NextResponse.json(categories);
+    const categories = await CategoryModel.find(query).lean();
+    const formatted = categories.map((c: any) => {
+      const { _id, __v, ...rest } = c;
+      return rest;
+    });
+    return NextResponse.json(formatted);
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: errorMsg }, { status: 500 });

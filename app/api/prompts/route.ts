@@ -36,14 +36,16 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const prompts = await PromptModel.find(query).sort({ createdAt: -1 });
+    const prompts = await PromptModel.find(query).sort({ createdAt: -1 }).lean();
 
-    const formattedPrompts = prompts.map((p) => {
-      const doc = p.toJSON();
-      if (userId) {
-        doc.isFavorite = (p.likedBy && p.likedBy.includes(userId)) || (p.userId === userId && p.isFavorite);
-      }
-      return doc;
+    const formattedPrompts = prompts.map((p: any) => {
+      const { _id, __v, ...rest } = p;
+      return {
+        ...rest,
+        isFavorite: userId
+          ? Boolean((p.likedBy && p.likedBy.includes(userId)) || (p.userId === userId && p.isFavorite))
+          : false,
+      };
     });
 
     return NextResponse.json(formattedPrompts);
@@ -66,9 +68,9 @@ export async function POST(req: NextRequest) {
     }
 
     const { userId } = await auth();
-    let authorName = body.authorName || 'Community';
+    let authorName = body.authorName ? body.authorName.trim() : 'Community';
 
-    if (userId) {
+    if (userId && (!body.authorName || body.authorName === 'Community' || body.authorName === 'User')) {
       try {
         const user = await currentUser();
         if (user) {

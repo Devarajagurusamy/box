@@ -39,5 +39,9 @@ const QuickLinkSchema = new Schema<IQuickLink>(
   }
 );
 
+QuickLinkSchema.index({ isPublic: 1 });
+QuickLinkSchema.index({ userId: 1 });
+QuickLinkSchema.index({ likedBy: 1 });
+
 export const QuickLinkModel: Model<IQuickLink> =
   mongoose.models.QuickLink || mongoose.model<IQuickLink>('QuickLink', QuickLinkSchema);

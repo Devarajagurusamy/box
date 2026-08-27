@@ -65,5 +65,9 @@ const PromptSchema = new Schema<IPrompt>(
   }
 );
 
+PromptSchema.index({ isPublic: 1, createdAt: -1 });
+PromptSchema.index({ userId: 1, createdAt: -1 });
+PromptSchema.index({ likedBy: 1 });
+
 export const PromptModel: Model<IPrompt> =
   mongoose.models.Prompt || mongoose.model<IPrompt>('Prompt', PromptSchema);

@@ -31,5 +31,8 @@ const CategorySchema = new Schema<ICategory>(
   }
 );
 
+CategorySchema.index({ isPublic: 1 });
+CategorySchema.index({ userId: 1 });
+
 export const CategoryModel: Model<ICategory> =
   mongoose.models.Category || mongoose.model<ICategory>('Category', CategorySchema);

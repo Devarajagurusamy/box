@@ -134,7 +134,7 @@ const SidebarComponent: React.FC<SidebarProps> = ({
             <div className="w-7 h-7 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
               <Box className="w-4 h-4" />
             </div>
-            <span className="font-bold text-base tracking-tight text-white font-mono">BOX APP</span>
+            <span className="font-bold text-base tracking-tight text-white font-mono">BOX</span>
           </div>
 
           {/* Close button for mobile */}
